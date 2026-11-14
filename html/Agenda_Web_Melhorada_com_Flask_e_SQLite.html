@@ -1,0 +1,1950 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agenda Web Melhorada com Flask e SQLite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F8FB; --white:#FFFFFF; --ink:#13233F; --muted:#56637C; --line:#DCE3EE;
+  --py:#306998; --py-soft:#E7F0F8; --yellow:#F2C230;
+  --http:#2563EB; --html:#7C3AED; --css:#0E9468; --js:#B7790A; --red:#C62828;
+  --code-bg:#FAFBFD; color-scheme: light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:#E4E9F1;color:var(--ink);font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;overflow:hidden}
+code,pre,.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace}
+.stage{position:fixed;inset:0}
+.deck{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center;background:var(--white);box-shadow:0 18px 50px rgba(19,35,63,.18);border-radius:6px;overflow:hidden}
+.slide{position:absolute;inset:0;padding:40px 60px 68px;display:none;flex-direction:column;background:var(--white)}
+.slide.active{display:flex}
+.slide header{flex:none;padding-right:150px}
+.slide h2{font-size:33px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;line-height:1.15}
+.slide h2 code{font-size:.85em;color:var(--py)}
+.sub{font-size:18px;color:var(--muted);margin:0;line-height:1.4}
+.body{flex:1;min-height:0;margin-top:20px}
+.body.col{display:flex;flex-direction:column}
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:30px;height:100%}
+.grid2.even{grid-template-columns:1fr 1fr}
+.grid3{display:grid;grid-template-columns:1fr 1fr .95fr;gap:22px;height:100%}
+.grid2>*,.grid3>*{min-height:0}
+.body.col .grid2{height:auto}
+.mt{margin-top:18px}
+.stack{display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto}
+p code,li code,td code,span code,h3 code,div code{background:var(--py-soft);color:#1D4E79;padding:1px 5px;border-radius:4px;font-size:.88em}
+
+/* level meter + part tag (rendered by JS) */
+.meta-tag{position:absolute;top:22px;right:28px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.lv{display:inline-flex;gap:3px;vertical-align:middle}
+.lv i{width:16px;height:6px;border-radius:3px;background:var(--line)}
+.lv i.on{background:var(--yellow)}
+.lv.inline i{width:12px;height:5px}
+
+/* code */
+.codebox{display:flex;flex-direction:column;min-height:0;max-height:100%;border:1px solid var(--line);border-radius:10px;background:var(--code-bg);overflow:hidden}
+.cb-head{flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px;background:#EEF2F7;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.cb-head i{width:9px;height:9px;border-radius:50%;background:#D5DCE6}
+.cb-head span{margin-left:6px;font-family:'IBM Plex Mono',monospace}
+.cb-body{display:flex;overflow:auto;min-height:0}
+.cb-body pre{margin:0;padding:12px 0;font-size:14px;line-height:1.55}
+.gutter{flex:none;padding:12px 10px 12px 12px!important;text-align:right;color:#A3AEC0;user-select:none;border-right:1px solid var(--line);background:#F3F6FA}
+.code{flex:1;padding-left:14px!important;padding-right:16px!important}
+.code code{background:none!important;padding:0!important;color:#1F2937;font-size:inherit!important}
+.codebox.sm .cb-body pre{font-size:13px;line-height:1.5}
+.codebox.xs .cb-body pre{font-size:11.4px;line-height:1.4}
+.stack>.codebox{flex:none}
+/* light syntax theme (inline: external stylesheets are blocked) */
+.hljs-comment,.hljs-quote{color:#6E7781;font-style:italic}
+.hljs-keyword,.hljs-selector-tag,.hljs-meta .hljs-keyword,.hljs-doctag{color:#CF222E}
+.hljs-title,.hljs-title.function_,.hljs-title.class_{color:#8250DF}
+.hljs-string,.hljs-regexp,.hljs-meta .hljs-string{color:#0A3069}
+.hljs-number,.hljs-literal,.hljs-attr,.hljs-attribute,.hljs-variable,.hljs-property,.hljs-symbol{color:#0550AE}
+.hljs-built_in,.hljs-type{color:#953800}
+.hljs-tag,.hljs-name{color:#116329}
+.hljs-meta{color:#8250DF}
+.hljs-template-tag,.hljs-template-variable{color:#B35900;font-weight:500}
+.hljs-selector-class,.hljs-selector-id,.hljs-selector-pseudo{color:#6639BA}
+.hljs-section{color:#0550AE;font-weight:600}
+.hljs-subst{color:#1F2937}
+.hljs-params{color:#1F2937}
+
+/* explanations */
+.explain{display:flex;flex-direction:column;gap:9px;overflow:auto;min-height:0;font-size:15.5px;line-height:1.45}
+.pt{display:flex;gap:11px;align-items:flex-start}
+.pt p{margin:0}
+.pt .n{flex:none;min-width:34px;padding:2px 6px;text-align:center;border-radius:6px;background:var(--py);color:#fff;font:600 12.5px/1.5 'IBM Plex Mono',monospace;margin-top:1px}
+.callout{padding:11px 14px;border-radius:8px;border-left:4px solid;font-size:15.5px;line-height:1.45}
+.callout.sm{font-size:14.5px;padding:9px 12px}
+.callout.info{background:#EEF4FC;border-color:var(--http)}
+.callout.tip{background:#EAF6F0;border-color:var(--css)}
+.callout.warn{background:#FDF5E4;border-color:#D69E14}
+.note{font-size:14.5px;color:var(--muted);margin:10px 0 0}
+.key{margin:auto 0 0;padding:12px 16px;border:1px dashed #9FB3CF;border-radius:8px;background:#F4F7FB;font-size:17px;text-align:center}
+.mini-title{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--muted)}
+.h3{font-size:18px;margin:0 0 10px}
+.lab{display:inline-block;vertical-align:middle;font-size:13px;font-weight:600;padding:3px 10px;border-radius:5px;color:#fff;margin-left:8px;letter-spacing:.01em}
+.l1{background:var(--html)}.l2{background:var(--css)}.l3{background:var(--http)}.l4{background:#C98B05}.l5{background:var(--red)}.l6{background:#475569}
+.slide h2 .lab{font-size:14px;position:relative;top:-3px}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{text-align:left;font-weight:600;color:var(--muted);font-size:13px;padding:6px 10px;border-bottom:2px solid var(--line)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl.compact{font-size:14px}.tbl.compact td{padding:5px 8px}
+.tbl.wide td{padding:9px 10px}
+.m-get{color:#0E7C4F!important;background:#E6F5EE!important}.m-post{color:#1D4ED8!important;background:#E8EFFD!important}
+.m-put{color:#9A6400!important;background:#FBF1DC!important}.m-del{color:#B42318!important;background:#FDECEA!important}
+.st{display:inline-block;font:600 13px 'IBM Plex Mono',monospace;padding:1px 7px;border-radius:4px}
+.s2{background:#E6F5EE;color:#0E7C4F}.s3{background:#E8EFFD;color:#1D4ED8}.s4{background:#FBF1DC;color:#9A6400}.s5{background:#FDECEA;color:#B42318}
+
+/* cover */
+.cover{background:linear-gradient(var(--paper),var(--paper));background-image:linear-gradient(#E3EAF4 1px,transparent 1px),linear-gradient(90deg,#E3EAF4 1px,transparent 1px);background-size:32px 32px;background-color:var(--paper)}
+.cover-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center;height:100%}
+.cover-pre{font-size:18px;color:var(--py);font-weight:500;margin:0 0 10px}
+.cover h1{font-size:58px;line-height:1.04;letter-spacing:-.025em;margin:0 0 18px;font-weight:700}
+.cover-sub{font-size:19px;line-height:1.5;color:var(--muted);margin:0 0 22px;max-width:30em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:500 14px 'IBM Plex Mono',monospace;padding:5px 12px;border-radius:999px;background:#fff;border:1.5px solid}
+.c-http{color:var(--http)}.c-html{color:var(--html)}.c-css{color:var(--css)}.c-js{color:var(--js)}.c-py{color:var(--py)}.c-jinja{color:#B35900}
+.cover-author{margin:30px 0 0;font-size:16px;font-weight:600}
+.cover-author span{font-weight:400;color:var(--muted)}
+.cover-art{position:relative;height:440px}
+.ca-win{position:absolute;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 34px rgba(19,35,63,.12);padding:30px 18px 18px}
+.ca-win>i{position:absolute;top:11px;width:9px;height:9px;border-radius:50%;background:#D5DCE6}
+.ca-win>i:nth-child(1){left:14px}.ca-win>i:nth-child(2){left:28px}.ca-win>i:nth-child(3){left:42px}
+.ca-code{left:0;top:10px;width:330px;background:var(--code-bg)}
+.ca-code pre{margin:0;font-size:13.5px;line-height:1.6;color:#0A3069}
+.ca-page{right:0;bottom:0;width:300px}
+.ca-h{font-weight:600;font-size:16px;margin-bottom:10px}
+.ca-in{height:26px;border:1px solid #CBD3DF;border-radius:5px;margin-bottom:7px}
+.ca-btn{background:var(--py);color:#fff;text-align:center;border-radius:5px;padding:5px;font-size:13px;margin-bottom:10px}
+.ca-li{font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);padding:5px 0}
+.ca-arrow{position:absolute;left:46%;top:46%;font-size:44px;color:var(--yellow);font-weight:700}
+.hint-keys{position:absolute;bottom:62px;left:60px;font-size:13px;color:var(--muted);margin:0}
+
+/* roadmap */
+.roadmap{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.roadmap li{display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:16px;padding:11px 18px;border:1px solid var(--line);border-radius:10px}
+.roadmap b{width:40px;height:40px;border-radius:50%;background:var(--py);color:#fff;display:grid;place-items:center;font-size:18px}
+.roadmap h3{margin:0;font-size:18px}.roadmap p{margin:2px 0 0;color:var(--muted);font-size:15px}
+.legend{font-size:14px;color:var(--muted);margin-top:14px}
+
+/* divider */
+.divider{flex-direction:row!important;align-items:center;gap:56px;background-color:var(--paper);background-image:linear-gradient(#E3EAF4 1px,transparent 1px),linear-gradient(90deg,#E3EAF4 1px,transparent 1px);background-size:32px 32px}
+.div-num{font-size:220px;font-weight:700;line-height:1;color:var(--py);opacity:.9;letter-spacing:-.05em;min-width:200px;text-align:center}
+.divider h2{font-size:46px}
+.div-list{margin:22px 0 0;padding-left:22px;font-size:19px;line-height:1.75}
+.div-list li::marker{color:var(--yellow)}
+
+/* flow */
+.flow{display:flex;align-items:stretch;gap:10px}
+.flow-step{flex:1;border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center;background:#fff}
+.flow-step .ico{font-size:34px}
+.flow-step h4{margin:8px 0 4px;font-size:17px}
+.flow-step p{margin:0;font-size:14.5px;color:var(--muted);line-height:1.4}
+.flow-arrow{display:grid;place-items:center;font-size:26px;color:var(--http)}
+.flow-back{margin-top:12px;text-align:center;font-size:15px;color:var(--muted);padding:8px;border-top:2px solid var(--http);border-radius:2px}
+
+/* pieces */
+.pieces{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.piece{border:1px solid var(--line);border-top:5px solid;border-radius:10px;padding:22px 18px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.piece .ico{font-size:40px}
+.piece h3{margin:4px 0;font-size:26px}
+.piece p{margin:0;font-size:16px;line-height:1.4}
+.piece .meta{color:var(--muted);font-style:italic;font-size:14.5px;margin-top:6px}
+.piece code{margin-top:auto;font-size:14px;padding:6px 10px;width:100%}
+.p-http{border-top-color:var(--http)}.p-http h3{color:var(--http)}
+.p-html{border-top-color:var(--html)}.p-html h3{color:var(--html)}
+.p-css{border-top-color:var(--css)}.p-css h3{color:var(--css)}
+.p-js{border-top-color:var(--js)}.p-js h3{color:var(--js)}
+
+/* box model */
+.boxmodel{font:12px 'IBM Plex Mono',monospace;color:#5A4500;max-width:360px}
+.bm-m{background:#FBF1DC;border:1px dashed #D69E14;padding:6px 10px 10px}
+.bm-b{background:#EDE7F9;border:2px solid var(--html);padding:6px 10px 10px;color:#4C1D95;margin-top:4px}
+.bm-p{background:#E6F5EE;padding:6px 10px 10px;color:#065F46;margin-top:4px}
+.bm-c{background:#E8EFFD;padding:8px;text-align:center;color:#1E3A8A;margin-top:4px}
+
+/* previews & demos */
+.preview{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-radius:8px;background:#f4f6fb;font-family:Arial,sans-serif;font-size:13px}
+.pv-form{display:flex;flex-direction:column;gap:5px}
+.pv-in{border:1px solid #ccc;border-radius:6px;padding:6px;background:#fff}
+.pv-btn{background:#2563eb;color:#fff;border-radius:6px;padding:7px;text-align:center}
+.pv-list div{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;padding:6px 0;gap:6px}
+.demo{border:1px dashed #9FB3CF;border-radius:8px;padding:10px 14px;background:#F7FAFD}
+.demo button{font:inherit;background:var(--py);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;margin-top:6px}
+.demo button:hover{background:#24547C}
+.demo p#demoMsg{margin:8px 0 0;font-weight:500}
+.flash-demo{display:flex;flex-direction:column;gap:6px}
+.alerta-pv{padding:8px 12px;border-radius:6px;font-size:14px}
+.alerta-pv.erro{background:#FDECEA;color:#9B1C1C;border:1px solid #F5C2BE}
+.alerta-pv.sucesso{background:#E6F5EE;color:#0B6B44;border:1px solid #B8E2CC}
+
+/* architecture */
+.arch{display:grid;grid-template-columns:auto auto auto 1fr;align-items:center;gap:12px}
+.arch-browser,.arch-flask{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 14px;border:1.5px solid var(--http);border-radius:10px;font-size:30px}
+.arch-flask{border-color:var(--py);background:var(--py-soft)}
+.arch-browser span,.arch-flask span{font-size:14px;font-weight:600}
+.arch-link{display:flex;flex-direction:column;gap:6px;font:12.5px 'IBM Plex Mono',monospace;color:var(--http)}
+.arch-out{display:flex;flex-direction:column;gap:10px}
+.ao{border:1.5px solid;border-radius:8px;padding:9px 12px;display:flex;flex-direction:column;font-size:13.5px}
+.ao b{font-family:'IBM Plex Mono',monospace}.ao span{color:var(--muted)}
+.a-tpl{border-color:var(--html)}.a-tpl b{color:var(--html)}
+.a-st{border-color:var(--css)}.a-st b{color:var(--css)}
+.a-db{border-color:var(--js)}.a-db b{color:var(--js)}
+
+/* tree */
+.tree{font:15.5px/1 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:10px;padding:18px 20px;background:var(--code-bg);display:flex;flex-direction:column;gap:12px;align-self:start}
+.tree div{display:flex;align-items:baseline;gap:8px}
+.tree span{margin-left:auto;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--muted)}
+.t1{padding-left:26px}.t2{padding-left:56px}
+.tree .c-py{color:var(--py)}.tree .c-html{color:var(--html)}.tree .c-css{color:var(--css)}.tree .c-js{color:var(--js)}.tree .c-muted{color:#94A0B4}
+
+/* quiz */
+.quiz{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.qcard{font:inherit;text-align:left;border:1px solid var(--line);border-radius:10px;padding:18px 20px;background:#fff;cursor:pointer;color:var(--ink);display:flex;flex-direction:column;gap:10px;min-height:150px}
+.qcard:hover{border-color:#9FB3CF}
+.qcard .q{font-size:17px;font-weight:600;line-height:1.4}
+.qcard .a{display:none;font-size:15.5px;line-height:1.45;color:#0B5A3A;background:#EAF6F0;border-radius:7px;padding:10px 12px}
+.qcard::after{content:'Clique para revelar';font-size:13px;color:var(--muted);margin-top:auto}
+.qcard.open .a{display:block}.qcard.open::after{content:''}
+
+/* PRG svg */
+.prg{width:100%;height:auto;max-height:300px}
+.prg .lane{stroke:#B9C4D4;stroke-dasharray:5 6}
+.prg .lane-t{font:600 16px 'IBM Plex Sans',sans-serif;fill:var(--muted);text-anchor:middle}
+.prg .b-cli{fill:#FFF4CF;stroke:#E2B21E}
+.prg .b-srv{fill:var(--py);stroke:var(--py)}
+.prg .bt{font:600 15px 'IBM Plex Sans',sans-serif;fill:var(--ink);text-anchor:middle}
+.prg .bt.s{font-weight:400}
+.prg .bt.w{fill:#fff}
+.prg .ln{stroke:var(--http);stroke-width:3}
+.prg .arw{fill:var(--http)}
+.prg .lt{font:500 14px 'IBM Plex Mono',monospace;fill:#1D4ED8;text-anchor:middle}
+
+/* stairs */
+.stairs{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:end}
+.stair{border:1px solid var(--line);border-radius:10px;padding:18px;background:#fff;border-bottom:5px solid;display:flex;flex-direction:column;gap:6px}
+.stair h3{margin:0;font-size:19px}.stair p{margin:0;font-size:15px;color:var(--muted);line-height:1.45}
+.sn{font:600 13px 'IBM Plex Mono',monospace;color:var(--muted)}
+.stair.s1{height:200px;border-bottom-color:var(--yellow)}.stair.s2{height:260px;border-bottom-color:var(--css)}
+.stair.s3{height:320px;border-bottom-color:var(--http)}.stair.s4{height:380px;border-bottom-color:var(--html)}
+.stair.here{background:#FFFBEB;border-color:#EBCB6B}
+.badge{margin-top:auto;align-self:flex-start;background:var(--yellow);color:var(--ink);font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
+
+/* missions */
+.missions{display:flex;flex-direction:column;gap:9px}
+.mission{font:inherit;display:grid;grid-template-columns:28px 92px 1fr;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);border-radius:9px;padding:11px 16px;background:#fff;cursor:pointer;color:var(--ink);font-size:16px}
+.mission .lab{margin:0;text-align:center}
+.chk{width:22px;height:22px;border:2px solid #AAB6C8;border-radius:5px;display:grid;place-items:center;font-size:15px;color:#fff}
+.mission.done{background:#F2FAF6}
+.mission.done .chk{background:var(--css);border-color:var(--css)}
+.mission.done .chk::after{content:'✓'}
+.missions+.key{margin-top:18px}
+
+/* end */
+.end-wrap{display:flex;flex-direction:column;justify-content:center;height:100%;max-width:820px}
+.refs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.refs div{border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+.refs span{font:13.5px 'IBM Plex Mono',monospace;color:var(--py)}
+
+/* nav */
+.nav{position:absolute;left:0;right:0;bottom:0;height:52px;display:flex;align-items:center;gap:14px;padding:0 24px;border-top:1px solid var(--line);background:rgba(255,255,255,.96);z-index:5}
+.nav button{font:inherit;font-size:15px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:6px 14px;cursor:pointer}
+.nav button:hover:not(:disabled){border-color:var(--py);color:var(--py)}
+.nav button:disabled{opacity:.4;cursor:default}
+.nav button:focus-visible,.qcard:focus-visible,.mission:focus-visible,.demo button:focus-visible{outline:3px solid var(--http);outline-offset:2px}
+.nav .part{font-size:14px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .count{font:500 14px 'IBM Plex Mono',monospace;color:var(--muted)}
+.progress{position:absolute;left:0;bottom:52px;height:3px;background:var(--yellow);transition:width .25s;z-index:6}
+@media (prefers-reduced-motion:reduce){.progress{transition:none}}
+.grid2.wide-code{grid-template-columns:1.5fr 1fr}
+.tbl td.yes{color:#0E7C4F;font-weight:600}
+/* cover extras */
+.ca-nav{background:#0d6efd;color:#fff;font-weight:600;font-size:13px;padding:7px 10px;border-radius:5px;display:flex;justify-content:space-between;margin-bottom:10px}
+.ca-nav span{font-weight:400;opacity:.85;font-size:11px}
+.ca-kpi{background:linear-gradient(135deg,#0d6efd,#4dabf7);color:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column}
+.ca-kpi small{opacity:.85;font-size:11px}.ca-kpi b{font-size:26px}
+/* evolution table */
+.tbl.evo{font-size:16px}.tbl.evo td{padding:11px 10px;vertical-align:middle}
+.tbl.evo .old{color:#7A8499;background:#F6F7F9}
+.tbl.evo .new{background:#EFF6FF;font-weight:500}
+.tbl.evo .arr{color:var(--http);font-size:22px;text-align:center;width:40px}
+/* screens */
+.screens{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px}
+.scr{display:flex;flex-direction:column;gap:6px}
+.scr-bar{font:12px 'IBM Plex Mono',monospace;color:var(--muted);background:#EEF2F7;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;padding:5px 10px}
+.scr-in{border:1px solid var(--line);border-radius:0 0 8px 8px;height:150px;padding:10px;display:flex;flex-direction:column;gap:6px;background:#f5f7fb;margin-top:-6px;overflow:hidden}
+.scr p{margin:0;font-size:14px;color:var(--muted)}.scr p b{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:13px}
+.scr-t{font-size:13px;color:#0d6efd}
+.scr .f{height:18px;background:#fff;border:1px solid #CED4DA;border-radius:4px;flex:1}
+.scr .f2{display:flex;gap:6px}.scr .f2 .f{flex:1}
+.scr .bt{background:#0d6efd;color:#fff;font-size:11px;text-align:center;border-radius:4px;padding:3px}
+.scr .bt.sm{align-self:flex-start;padding:3px 10px}
+.scr small{font-size:10px;color:var(--muted);text-align:center}
+.scr .nv{background:#0d6efd;color:#fff;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px}
+.scr .hero{height:34px;background:linear-gradient(135deg,#eef5ff,#fff);border:1px solid #e5edf8;border-radius:6px}
+.scr .kpi{flex:0 0 60px;height:50px;border-radius:6px;background:linear-gradient(135deg,#0d6efd,#4dabf7);color:#fff;font-weight:700;display:grid;place-items:center}
+.scr .tb{flex:1;min-height:22px;background:repeating-linear-gradient(#fff 0 10px,#E9ECEF 10px 11px);border:1px solid #DEE2E6;border-radius:4px}
+.scr .ta{height:30px;background:#fff;border:1px solid #CED4DA;border-radius:4px}
+.scr.base .scr-in{background:#FFFBEB}
+.scr .slot{flex:1;border:2px dashed #E2B21E;border-radius:6px;display:grid;place-items:center;font:11px 'IBM Plex Mono',monospace;color:#9A6400}
+.scr .ft{font-size:10px;text-align:center;color:var(--muted);border-top:1px solid var(--line);padding-top:3px}
+/* layers */
+.layers{display:flex;flex-direction:column;gap:6px}
+.layer{border-radius:10px;padding:14px 18px;border:1.5px solid}
+.layer h3{margin:0 0 4px;font-size:19px}.layer h3 span{font-size:13px;font-weight:400;color:var(--muted);margin-left:6px}
+.layer p{margin:0;font-size:15px;line-height:1.5}
+.l-front{border-color:var(--html);background:#F5F0FE}.l-front h3{color:var(--html)}
+.l-back{border-color:var(--py);background:var(--py-soft)}.l-back h3{color:var(--py)}
+.l-data{border-color:var(--css);background:#EAF6F0}.l-data h3{color:var(--css)}
+.layer-arrow{text-align:center;font:13px 'IBM Plex Mono',monospace;color:var(--muted)}
+/* ER */
+.er{display:grid;grid-template-columns:1fr 150px 1fr;align-items:start;gap:0}
+.er-t{border:1.5px solid #9FB3CF;border-radius:10px;overflow:hidden;background:#fff;font:14px 'IBM Plex Mono',monospace}
+.er-h{background:var(--css);color:#fff;font-weight:600;text-align:center;padding:8px;font-size:16px}
+.er-r{padding:7px 10px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}
+.er-r i{font-style:normal;width:22px;font-size:12px;text-align:center}
+.er-r em{margin-left:auto;font-style:normal;font-size:11px;color:var(--muted)}
+.er-r.pk{background:#FFF8E1}.er-r.fk{background:#E8F5EE;font-weight:600}.er-r.fk i{color:var(--css);font-weight:700}
+.er-link{display:flex;flex-direction:column;align-items:center;margin-top:52px;gap:4px;font:600 14px 'IBM Plex Mono',monospace;color:var(--css);position:relative}
+.er-line{width:100%;height:3px;background:var(--css)}
+.er-link{align-items:stretch;padding:0 6px}
+.er-card{display:flex;justify-content:space-between}
+.er-link code{text-align:center;font-size:11px!important;margin-top:6px;white-space:nowrap}
+/* hash flow */
+.hashflow{display:flex;align-items:center;gap:12px}
+.hf-box,.hf-fn{border:1.5px solid #9FB3CF;border-radius:9px;padding:12px 16px;font:15px 'IBM Plex Mono',monospace;display:flex;flex-direction:column;gap:4px;background:#fff}
+.hf-box small,.hf-fn small{font:12px 'IBM Plex Sans',sans-serif;color:var(--muted)}
+.hf-fn{border-color:var(--py);background:var(--py-soft)}
+.hf-box.hash{flex:1;border-color:var(--css);background:#EAF6F0;font-size:13px;word-break:break-all}
+.hf-arr{font-size:26px;color:var(--http)}
+/* sequence */
+.seq{display:grid;grid-template-columns:150px 1fr 150px;row-gap:8px;align-items:center}
+.seq-col{text-align:center;font-size:15px;padding:6px;border:1.5px solid #9FB3CF;border-radius:8px;background:#fff}
+.seq-msg{grid-column:1 / -1;display:flex;padding:0 75px}
+.seq-msg span{flex:1;font-size:14px;padding:6px 12px;border-bottom:2.5px solid var(--http);position:relative}
+.seq-msg.r span{text-align:left}.seq-msg.r span::after{content:'▶';position:absolute;right:-6px;bottom:-9px;color:var(--http);font-size:12px}
+.seq-msg.l span{text-align:right;border-color:var(--css)}.seq-msg.l span::after{content:'◀';position:absolute;left:-6px;bottom:-9px;color:var(--css);font-size:12px}
+.seq-msg code{font-size:12px!important}
+/* mini flow / previews */
+.mini-flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mini-flow span{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px;font-weight:600;display:flex;flex-direction:column;background:#fff}
+.mini-flow small{font:11.5px 'IBM Plex Mono',monospace;color:var(--muted);font-weight:400}
+.mini-flow b{color:var(--yellow)}
+.alerta-pv.warn{background:#FFF3CD;color:#7A5300;border:1px solid #FFE69C}
+.alerta-pv.info{background:#CFF4FC;color:#055160;border:1px solid #9EEAF9}
+.dash-pv{display:grid;grid-template-columns:120px 1fr;gap:10px;font-family:Arial,sans-serif;font-size:12.5px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#f5f7fb}
+.dpv-kpi{background:linear-gradient(135deg,#0d6efd,#4dabf7);color:#fff;border-radius:8px;padding:10px;display:flex;flex-direction:column}
+.dpv-kpi b{font-size:28px}.dpv-kpi small{opacity:.85}
+.dpv-tb{background:#fff;border-radius:8px;padding:6px 10px}
+.dpv-tb div{display:grid;grid-template-columns:1fr 1.4fr 1.3fr;padding:4px 0;border-bottom:1px solid #eee;gap:4px}
+.search-pv{font-family:Arial,sans-serif;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff}
+.spv-bar{display:flex;gap:8px;margin-bottom:6px}.spv-bar span{flex:1;border:1px solid #CED4DA;border-radius:5px;padding:5px 8px}
+.spv-bar b{border:1px solid #0d6efd;color:#0d6efd;border-radius:5px;padding:5px 10px;font-weight:400}
+.spv-row{display:flex;justify-content:space-between;padding:5px 2px;border-bottom:1px solid #eee}
+.demo input{font:15px 'IBM Plex Mono',monospace;padding:8px 10px;border:1px solid #CED4DA;border-radius:6px;width:100%;margin-top:6px}
+.demo input:focus-visible{outline:3px solid var(--http);outline-offset:1px}
+/* MVC */
+.mvc{display:grid;grid-template-columns:1fr 1fr;gap:16px;position:relative}
+.mvc-b{display:flex;gap:12px;align-items:flex-start;border-radius:10px;padding:14px;color:#fff}
+.mvc-b span{flex:none;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-weight:700}
+.mvc-b b{font-size:16px}.mvc-b p{margin:4px 0 0;font-size:14px;line-height:1.4}
+.mvc-b code{background:rgba(255,255,255,.2)!important;color:#fff!important}
+.m1{background:#1E3A5F}.m2{background:#2F7BC4}.m3{background:#2E7D4F;order:4}.m4{background:#6B3FA0;order:3}
+/* journey */
+.journey{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.jr{border-radius:10px;padding:14px 12px;border-top:6px solid;background:#fff;border-left:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;position:relative}
+.journey{margin-top:30px}.jr{min-height:280px;padding:20px 14px}.jr b{font-size:19px}.jr>code{font-size:11.5px!important;align-self:flex-start}
+.jr p{margin:0;font-size:15.5px;color:var(--muted);line-height:1.4}
+.jr:not(:last-child)::after{content:'→';position:absolute;right:-12px;top:42%;color:var(--muted);font-size:16px}
+.j1{border-top-color:#22A6C8}.j2{border-top-color:var(--http)}.j3{border-top-color:var(--html)}.j4{border-top-color:#9B5DE5}.j5{border-top-color:var(--css)}.j6{border-top-color:var(--yellow)}
+</style>
+</head>
+<body>
+<div class="stage"><div class="deck" role="region" aria-label="Apresentação">
+<!-- ================= CAPA ================= -->
+<section class="slide cover" data-part="Abertura" data-level="0">
+  <div class="cover-grid">
+    <div>
+      <p class="cover-pre">Dissecando um sistema completo</p>
+      <h1>Agenda Web Melhorada com Flask e SQLite</h1>
+      <p class="cover-sub">Um guia que conecta cada trecho de código ao funcionamento de uma aplicação full-stack real: banco de dados, autenticação, sessões, templates e interface.</p>
+      <div class="chips"><span class="chip c-py">Python + Flask</span><span class="chip c-css">SQLite</span><span class="chip c-html">HTML + Jinja2</span><span class="chip c-http">Bootstrap 5</span><span class="chip c-js">JavaScript</span></div>
+      <p class="cover-author">Prof. Armando Soares Sousa<br><span>Departamento de Computação · UFPI</span></p>
+    </div>
+    <div class="cover-art" aria-hidden="true">
+      <div class="ca-win ca-code"><i></i><i></i><i></i><pre>@app.route("/dashboard")
+@login_required
+def dashboard():
+    total = db.execute(
+      "SELECT COUNT(*) ... WHERE user_id = ?",
+      (session["user_id"],))</pre></div>
+      <div class="ca-arrow">⇄</div>
+      <div class="ca-win ca-page"><i></i><i></i><i></i>
+        <div class="ca-nav">Agenda Web <span>Dashboard · Contatos · Logout</span></div>
+        <div class="ca-kpi"><small>Total de contatos</small><b>12</b></div>
+        <div class="ca-li">Ana · (86) 99999-0000</div><div class="ca-li">Bruno · bruno@email.com</div>
+      </div>
+    </div>
+  </div>
+  <p class="hint-keys">Use ← → ou os botões abaixo para navegar</p>
+</section>
+
+<section class="slide" data-part="Abertura" data-level="0">
+  <header><h2>O roteiro da dissecação</h2><p class="sub">Vamos do panorama geral até cada linha do <code>app.py</code>, aumentando a complexidade a cada parte.</p></header>
+  <div class="body">
+    <ol class="roadmap">
+      <li><b>1</b><div><h3>Visão geral do sistema</h3><p>O que mudou em relação à agenda básica, as telas, a pilha tecnológica, os arquivos e as rotas.</p></div><span class="lv" data-l="1"></span></li>
+      <li><b>2</b><div><h3>Dados com SQLite</h3><p>SQL essencial, o modelo relacional, conexão por requisição e o escudo contra SQL Injection.</p></div><span class="lv" data-l="2"></span></li>
+      <li><b>3</b><div><h3>Autenticação e sessões</h3><p>Hash de senhas, cadastro, login, o “crachá” da sessão e o decorator <code>@login_required</code>.</p></div><span class="lv" data-l="3"></span></li>
+      <li><b>4</b><div><h3>As funcionalidades da agenda</h3><p>Dashboard, cadastro de contatos, busca com <code>LIKE</code>, templates, Bootstrap e o ciclo MVC.</p></div><span class="lv" data-l="3"></span></li>
+      <li><b>5</b><div><h3>Indo além</h3><p>Revisão de código, editar e excluir com segurança, Blueprints, SQLAlchemy e missões práticas.</p></div><span class="lv" data-l="4"></span></li>
+    </ol>
+    <p class="legend">A régua <span class="lv inline" data-l="2"></span> no canto de cada slide indica o nível de complexidade (1 a 4). Os números de linha nos códigos são os do projeto original.</p>
+  </div>
+</section>
+
+<!-- ================= PARTE 1 ================= -->
+<section class="slide divider" data-part="Parte 1 · Visão geral" data-level="1">
+  <div class="div-num">1</div>
+  <div><h2>Visão geral do sistema</h2><p class="sub">Antes de abrir o código, entender o sistema como um todo vivo e interconectado.</p>
+  <ul class="div-list"><li>Da agenda básica à agenda web melhorada</li><li>Um passeio pelas telas</li><li>Pilha tecnológica e divisão de responsabilidades</li><li>Planta baixa dos arquivos, execução e mapa de rotas</li></ul></div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>Do protótipo ao sistema: a evolução do projeto</h2><p class="sub">A agenda anterior guardava contatos em uma lista Python. A nova versão resolve as limitações dela.</p></header>
+  <div class="body col">
+    <table class="tbl evo">
+      <tr><th></th><th>Antes: agenda básica</th><th></th><th>Agora: agenda web melhorada</th></tr>
+      <tr><td><b>Armazenamento</b></td><td class="old">Lista Python em memória (volátil)</td><td class="arr">→</td><td class="new">Banco de dados SQLite em <code>instance/agenda.db</code></td></tr>
+      <tr><td><b>Usuários</b></td><td class="old">Anônimo e único: todos veem tudo</td><td class="arr">→</td><td class="new">Vários usuários com login; cada um vê só os seus contatos</td></tr>
+      <tr><td><b>Ciclo de vida</b></td><td class="old">Some ao reiniciar o servidor</td><td class="arr">→</td><td class="new">Dados persistem; o login é mantido entre páginas pela sessão</td></tr>
+      <tr><td><b>Interface</b></td><td class="old">Uma página com formulário e lista</td><td class="arr">→</td><td class="new">Menu, dashboard, formulários e busca com Bootstrap</td></tr>
+      <tr><td><b>Arquitetura</b></td><td class="old">Script linear único</td><td class="arr">→</td><td class="new">MVC simplificado: dados, controle e visão separados</td></tr>
+    </table>
+    <p class="key">O objetivo é entender o projeto não como trechos de código soltos, mas como um <b>sistema</b> em que cada peça depende das outras.</p>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>Um passeio pelas telas</h2><p class="sub">Seis templates cobrem toda a jornada do usuário.</p></header>
+  <div class="body screens">
+    <div class="scr"><div class="scr-bar">/login</div><div class="scr-in"><b class="scr-t">Entrar na Agenda</b><span class="f"></span><span class="f"></span><span class="bt">Entrar</span><small>Ainda não tem conta? Cadastre-se</small></div><p><b>login.html</b> e-mail e senha</p></div>
+    <div class="scr"><div class="scr-bar">/register</div><div class="scr-in"><b class="scr-t">Novo usuário</b><span class="f"></span><span class="f"></span><span class="f2"><span class="f"></span><span class="f"></span></span><span class="bt">Cadastrar</span></div><p><b>register.html</b> nome, e-mail, senha e confirmação</p></div>
+    <div class="scr"><div class="scr-bar">/dashboard</div><div class="scr-in"><span class="nv">Agenda Web</span><span class="hero"></span><span class="f2"><span class="kpi">12</span><span class="tb"></span></span></div><p><b>dashboard.html</b> total e últimos 5 contatos</p></div>
+    <div class="scr"><div class="scr-bar">/contacts/new</div><div class="scr-in"><span class="nv">Agenda Web</span><span class="f"></span><span class="f2"><span class="f"></span><span class="f"></span></span><span class="ta"></span><span class="bt sm">Salvar contato</span></div><p><b>contact_form.html</b> nome, e-mail, telefone, observações</p></div>
+    <div class="scr"><div class="scr-bar">/contacts?q=ana</div><div class="scr-in"><span class="nv">Agenda Web</span><span class="f2"><span class="f"></span><span class="bt sm">Buscar</span></span><span class="tb"></span><span class="tb"></span></div><p><b>contacts.html</b> tabela com busca</p></div>
+    <div class="scr base"><div class="scr-bar">todas</div><div class="scr-in"><span class="nv">Menu + mensagens</span><span class="slot">{% block content %}</span><span class="ft">rodapé</span></div><p><b>base.html</b> o molde comum de todas</p></div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>A anatomia tecnológica e a divisão de tarefas</h2><p class="sub">Cada camada tem uma responsabilidade clara. O frontend nunca fala diretamente com o banco.</p></header>
+  <div class="body grid2 even">
+    <div class="layers">
+      <div class="layer l-front"><h3>Frontend <span>roda no navegador</span></h3><p><b>HTML/CSS/JS</b> estrutura e comportamento · <b>Bootstrap 5</b> layout responsivo · <b>Jinja2</b> preenche o HTML no servidor</p></div>
+      <div class="layer-arrow">⇅ requisições HTTP (GET/POST)</div>
+      <div class="layer l-back"><h3>Backend <span>roda no servidor</span></h3><p><b>Python</b> linguagem · <b>Flask</b> rotas, sessões e templates · <b>Werkzeug</b> hash de senhas</p></div>
+      <div class="layer-arrow">⇅ comandos SQL</div>
+      <div class="layer l-data"><h3>Dados <span>arquivo local</span></h3><p><b>SQLite</b> banco relacional em um único arquivo, sem servidor separado</p></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">1</span><p><b>Separação de responsabilidades</b> permite isolar problemas: erro de layout está no template ou CSS; erro de dados está na rota ou no SQL.</p></div>
+      <div class="pt"><span class="n">2</span><p><b>O backend é o orquestrador:</b> recebe a requisição, consulta o banco, decide a resposta e escolhe o template.</p></div>
+      <div class="pt"><span class="n">3</span><p><b>Por que SQLite?</b> Já vem com o Python (<code>import sqlite3</code>), não precisa instalar nada e guarda tudo em um arquivo. Ideal para aprender e para projetos pequenos.</p></div>
+      <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>requirements.txt</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2</pre><pre class="code"><code class="language-bash">Flask==3.1.1
+Werkzeug==3.1.3</code></pre></div></div>
+      <p class="note">Só duas dependências! O Bootstrap vem por CDN no <code>base.html</code> e o SQLite faz parte da biblioteca padrão.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>A planta baixa: mapeando os arquivos</h2><p class="sub">Cada pasta tem um papel. Saber onde procurar é metade da manutenção.</p></header>
+  <div class="body grid2 even">
+    <div class="tree">
+      <div class="t0">📁 <b>agenda-web-main/</b></div>
+      <div class="t1 c-py">📄 app.py<span>a sala de comando (219 linhas)</span></div>
+      <div class="t1">📄 requirements.txt<span>dependências</span></div>
+      <div class="t1">📄 .gitignore<span>ignora venv/ e *.db</span></div>
+      <div class="t1 c-css">📁 instance/<span>o cofre de dados</span></div>
+      <div class="t2 c-css">🗄️ agenda.db<span>criado na 1ª execução</span></div>
+      <div class="t1 c-html">📁 templates/<span>a vitrine (6 páginas)</span></div>
+      <div class="t2 c-html">📄 base.html, login.html, register.html …</div>
+      <div class="t1 c-js">📁 static/<span>recursos de fachada</span></div>
+      <div class="t2 c-js">📄 css/style.css · js/app.js</div>
+      <div class="t1 c-muted">📁 docs/<span>documentação técnica</span></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">app.py</span><p>Rotas, conexão com o banco, regras de negócio e autenticação. Tudo passa por aqui.</p></div>
+      <div class="pt"><span class="n">templates</span><p>HTML com marcações Jinja2. Só chega ao navegador depois de processado por uma rota.</p></div>
+      <div class="pt"><span class="n">static</span><p>Arquivos entregues como estão: CSS customizado e JavaScript de validação.</p></div>
+      <div class="pt"><span class="n">instance</span><p>Pasta recomendada pelo Flask para arquivos locais que <b>não</b> vão para o Git, como o banco e configurações secretas.</p></div>
+      <div class="callout warn sm">O <code>.gitignore</code> exclui <code>instance/*.db</code>: cada desenvolvedor tem seu próprio banco. O arquivo <code>.gitkeep</code> só existe para o Git manter a pasta vazia no repositório.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>Colocando o sistema para rodar</h2><p class="sub">Ambiente virtual, dependências e execução.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>Terminal</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14</pre><pre class="code"><code class="language-bash"># 1. Entrar na pasta e criar o ambiente virtual
+cd agenda-web-main
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+
+# 2. Instalar as dependências fixadas
+pip install -r requirements.txt
+
+# 3. (Opcional) criar as tabelas pelo comando customizado
+flask --app app init-db
+
+# 4. Executar
+python app.py
+ * Running on http://127.0.0.1:5001</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">3–4</span><p>O <code>venv</code> isola as versões exatas do <code>requirements.txt</code> (<code>Flask==3.1.1</code>) deste projeto.</p></div>
+      <div class="pt"><span class="n">7</span><p><code>-r</code> lê o arquivo e instala tudo de uma vez: é assim que um colega reproduz seu ambiente.</p></div>
+      <div class="pt"><span class="n">10</span><p><code>init-db</code> é um comando de terminal criado pelo próprio projeto com <code>@app.cli.command</code> (veremos na Parte 2).</p></div>
+      <div class="pt"><span class="n">13–14</span><p>Este projeto usa a porta <b>5001</b>, não a 5000 padrão. Acesse <code>http://127.0.0.1:5001</code>.</p></div>
+      <div class="callout info sm">Na primeira visita, a rota <code>/</code> redireciona para <code>/login</code>. Crie um usuário em “Novo usuário” e depois faça login.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 1 · Visão geral" data-level="1">
+  <header><h2>O mapa de rotas</h2><p class="sub">Oito URLs formam todo o sistema. Esta tabela é o “índice” do <code>app.py</code>.</p></header>
+  <div class="body">
+    <table class="tbl wide">
+      <tr><th>Rota</th><th>Métodos</th><th>Função</th><th>Exige login?</th><th>O que faz</th></tr>
+      <tr><td><code>/</code></td><td>GET</td><td><code>index</code></td><td>Não</td><td>Redireciona para dashboard (logado) ou login</td></tr>
+      <tr><td><code>/register</code></td><td>GET, POST</td><td><code>register</code></td><td>Não</td><td>Exibe e processa o cadastro de usuário</td></tr>
+      <tr><td><code>/login</code></td><td>GET, POST</td><td><code>login</code></td><td>Não</td><td>Exibe e processa a autenticação</td></tr>
+      <tr><td><code>/dashboard</code></td><td>GET</td><td><code>dashboard</code></td><td class="yes">Sim</td><td>Total de contatos e os 5 mais recentes</td></tr>
+      <tr><td><code>/contacts/new</code></td><td>GET, POST</td><td><code>new_contact</code></td><td class="yes">Sim</td><td>Exibe e processa o cadastro de contato</td></tr>
+      <tr><td><code>/contacts</code></td><td>GET</td><td><code>list_contacts</code></td><td class="yes">Sim</td><td>Lista contatos, com busca opcional por <code>?q=</code></td></tr>
+      <tr><td><code>/logout</code></td><td>GET</td><td><code>logout</code></td><td class="yes">Sim</td><td>Limpa a sessão e volta ao login</td></tr>
+    </table>
+    <p class="note">Repare no padrão <b>GET + POST na mesma rota</b>: GET mostra o formulário, POST processa os dados. Os templates referenciam rotas pelo nome da função: <code>url_for('list_contacts')</code>.</p>
+  </div>
+</section>
+
+<!-- ================= PARTE 2 ================= -->
+<section class="slide divider" data-part="Parte 2 · Dados com SQLite" data-level="2">
+  <div class="div-num">2</div>
+  <div><h2>Dados com SQLite</h2><p class="sub">Trocamos a lista em memória por um banco relacional de verdade.</p>
+  <ul class="div-list"><li>SQL essencial em poucos comandos</li><li>O modelo relacional: usuários e contatos</li><li>Criação das tabelas e conexão por requisição</li><li>Resultados com <code>sqlite3.Row</code> e o escudo parametrizado</li></ul></div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="2">
+  <header><h2>SQL essencial: a linguagem dos bancos</h2><p class="sub">O projeto usa só três comandos: <code>CREATE TABLE</code>, <code>INSERT</code> e <code>SELECT</code>.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>exemplos.sql</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18</pre><pre class="code"><code class="language-sql">-- Criar uma tabela (a "planilha" com colunas tipadas)
+CREATE TABLE contacts (
+  id    INTEGER PRIMARY KEY AUTOINCREMENT,
+  name  TEXT NOT NULL,
+  phone TEXT
+);
+
+-- Inserir uma linha
+INSERT INTO contacts (name, phone) VALUES ('Ana', '(86) 99999-0000');
+
+-- Consultar: colunas, filtro, ordem e limite
+SELECT id, name FROM contacts
+WHERE name LIKE '%an%'
+ORDER BY name ASC
+LIMIT 5;
+
+-- Agregar: quantas linhas existem?
+SELECT COUNT(*) AS total FROM contacts;</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">3</span><p><code>PRIMARY KEY AUTOINCREMENT</code>: identificador único gerado pelo banco (1, 2, 3…). Você nunca informa o <code>id</code>.</p></div>
+      <div class="pt"><span class="n">4</span><p><code>NOT NULL</code> obriga o preenchimento. O banco recusa um contato sem nome.</p></div>
+      <div class="pt"><span class="n">13</span><p><code>WHERE</code> filtra linhas. Com <code>LIKE</code>, o <code>%</code> significa “qualquer sequência de caracteres”.</p></div>
+      <div class="pt"><span class="n">14–15</span><p><code>ORDER BY</code> ordena (<code>ASC</code> crescente, <code>DESC</code> decrescente); <code>LIMIT</code> corta a quantidade.</p></div>
+      <div class="pt"><span class="n">18</span><p><code>COUNT(*)</code> conta linhas; <code>AS total</code> dá um nome à coluna do resultado.</p></div>
+      <div class="callout tip sm">Cada um desses comandos aparece no <code>app.py</code>. Ao encontrá-los, volte a este slide.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="2">
+  <header><h2>SQLite no Python, antes do Flask</h2><p class="sub">Um script isolado mostra o ciclo básico: conectar, executar, confirmar e fechar.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>teste_sqlite.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20</pre><pre class="code"><code class="language-python">import sqlite3
+
+con = sqlite3.connect("teste.db")   # cria o arquivo se não existir
+
+con.execute("""
+    CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT
+    )
+""")
+
+con.execute("INSERT INTO contacts (name, phone) VALUES (?, ?)",
+            ("Ana", "(86) 99999-0000"))
+con.commit()                        # grava de verdade no arquivo
+
+for linha in con.execute("SELECT id, name, phone FROM contacts"):
+    print(linha)                    # (1, 'Ana', '(86) 99999-0000')
+
+con.close()</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">3</span><p><code>connect</code> abre (ou cria) o arquivo do banco e devolve um objeto de conexão.</p></div>
+      <div class="pt"><span class="n">6</span><p><code>IF NOT EXISTS</code> torna o comando seguro para rodar várias vezes: se a tabela já existe, nada acontece.</p></div>
+      <div class="pt"><span class="n">13–14</span><p>Os <code>?</code> são <b>marcadores</b> e os valores vão separados, em uma tupla. Veremos o porquê adiante.</p></div>
+      <div class="pt"><span class="n">15</span><p><code>commit()</code> confirma a transação. Sem ele, o <code>INSERT</code> é descartado ao fechar a conexão.</p></div>
+      <div class="pt"><span class="n">17–18</span><p>Um <code>SELECT</code> devolve um cursor que pode ser percorrido: cada linha chega como uma tupla.</p></div>
+      <div class="callout info sm">O <code>app.py</code> faz exatamente isso, só que organizado em funções e dentro das rotas.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="2">
+  <header><h2>O esqueleto relacional: dados separados por usuário</h2><p class="sub">Duas tabelas ligadas por uma chave estrangeira.</p></header>
+  <div class="body grid2 even">
+    <div class="er">
+      <div class="er-t"><div class="er-h">users</div>
+        <div class="er-r pk"><i>🔑</i>id <em>INTEGER</em></div>
+        <div class="er-r">name <em>TEXT NOT NULL</em></div>
+        <div class="er-r">email <em>TEXT UNIQUE</em></div>
+        <div class="er-r">password_hash <em>TEXT</em></div>
+        <div class="er-r">created_at <em>TEXT</em></div>
+      </div>
+      <div class="er-link"><div class="er-card"><span>1</span><span>N</span></div><div class="er-line"></div><code>WHERE user_id = ?</code></div>
+      <div class="er-t"><div class="er-h">contacts</div>
+        <div class="er-r pk"><i>🔑</i>id <em>INTEGER</em></div>
+        <div class="er-r fk"><i>FK</i>user_id <em>→ users.id</em></div>
+        <div class="er-r">name <em>TEXT NOT NULL</em></div>
+        <div class="er-r">email <em>TEXT</em></div>
+        <div class="er-r">phone <em>TEXT</em></div>
+        <div class="er-r">notes <em>TEXT</em></div>
+        <div class="er-r">created_at <em>TEXT</em></div>
+      </div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">1:N</span><p>Um usuário tem <b>muitos</b> contatos; cada contato pertence a <b>exatamente um</b> usuário.</p></div>
+      <div class="pt"><span class="n">FK</span><p><code>user_id</code> guarda o <code>id</code> do dono. É a <b>chave estrangeira</b> que liga as tabelas.</p></div>
+      <div class="pt"><span class="n">UQ</span><p><code>email UNIQUE</code> em <code>users</code>: o banco impede dois cadastros com o mesmo e-mail.</p></div>
+      <div class="pt"><span class="n">🔒</span><p>A senha <b>nunca</b> é guardada, só o seu hash (Parte 3).</p></div>
+      <div class="callout tip"><b>A regra de ouro:</b> toda consulta a <code>contacts</code> inclui <code>WHERE user_id = ?</code> com o id da sessão. É isso que garante que cada usuário veja apenas os seus dados.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="2">
+  <header><h2>Criando as tabelas: <code>init_db()</code></h2><p class="sub">O SQL do modelo relacional, executado pelo Python.</p></header>
+  <div class="body grid2">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60</pre><pre class="code"><code class="language-python">def init_db():
+    """Cria as tabelas usando comandos SQL simples."""
+    db = get_db()
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    db.execute(
+        """
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            email TEXT,
+            phone TEXT,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """
+    )
+    db.commit()</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">36, 47</span><p>As aspas triplas permitem escrever o SQL em várias linhas, legível como no slide anterior.</p></div>
+      <div class="pt"><span class="n">40</span><p><code>NOT NULL UNIQUE</code> combinados: o e-mail é obrigatório e não se repete.</p></div>
+      <div class="pt"><span class="n">52–54</span><p>Em <code>contacts</code>, só o nome é obrigatório. E-mail, telefone e observações podem ficar vazios.</p></div>
+      <div class="pt"><span class="n">56</span><p><code>FOREIGN KEY … REFERENCES</code> declara a ligação com <code>users(id)</code>.</p></div>
+      <div class="pt"><span class="n">63–67</span><p>Logo abaixo, <code>@app.cli.command</code> transforma a função em um comando de terminal:</p></div>
+      <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">63
+64
+65
+66
+67</pre><pre class="code"><code class="language-python">@app.cli.command("init-db")
+def init_db_command():
+    """Comando: flask --app app init-db"""
+    init_db()
+    print("Banco de dados inicializado com sucesso.")</code></pre></div></div>
+      <div class="pt"><span class="n">42, 55</span><p>Datas como <code>TEXT</code> no formato ISO (<code>2026-11-14T10:30:00</code>): o SQLite não tem tipo de data próprio, e esse formato ordena corretamente.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="3">
+  <header><h2>Uma conexão por requisição: <code>get_db()</code> e <code>g</code></h2><p class="sub">Abrir a conexão quando for preciso e fechá-la sempre ao final da requisição.</p></header>
+  <div class="body grid2">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29</pre><pre class="code"><code class="language-python">import os
+import sqlite3
+from functools import wraps
+from datetime import datetime
+from flask import Flask, flash, g, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DATABASE = os.path.join(BASE_DIR, "instance", "agenda.db")
+
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-troque-em-producao")
+app.config["DATABASE"] = DATABASE
+
+
+def get_db():
+    """Abre uma conexão SQLite por requisição."""
+    if "db" not in g:
+        os.makedirs(os.path.dirname(app.config["DATABASE"]), exist_ok=True)
+        g.db = sqlite3.connect(app.config["DATABASE"])
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(error=None):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">8–9</span><p>Monta o caminho absoluto de <code>instance/agenda.db</code> a partir da pasta do <code>app.py</code>, funcionando de qualquer diretório.</p></div>
+      <div class="pt"><span class="n">12</span><p>Lê a chave secreta de uma variável de ambiente; se não existir, usa um valor de desenvolvimento.</p></div>
+      <div class="pt"><span class="n">18</span><p><code>g</code> é um “bolso” que dura <b>uma requisição</b>. Se já há conexão nele, ela é reaproveitada.</p></div>
+      <div class="pt"><span class="n">19</span><p>Cria a pasta <code>instance/</code> se faltar (<code>exist_ok</code> evita erro se já existir).</p></div>
+      <div class="pt"><span class="n">21</span><p><code>row_factory</code> faz cada linha ser acessível por nome de coluna (próximo slide).</p></div>
+      <div class="pt"><span class="n">25–29</span><p><code>teardown_appcontext</code> roda ao fim de toda requisição, até com erro, e fecha a conexão. Nada fica aberto.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="3">
+  <header><h2>Linhas com nome: <code>sqlite3.Row</code></h2><p class="sub">Por que o template consegue escrever <code>contact.name</code> em vez de <code>contact[1]</code>?</p></header>
+  <div class="body grid2">
+    <div class="stack">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>experimento no terminal</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11</pre><pre class="code"><code class="language-python">con = sqlite3.connect("teste.db")
+
+# Padrão: cada linha é uma tupla, acesso por posição
+linha = con.execute("SELECT id, name FROM contacts").fetchone()
+print(linha[1])          # 'Ana'   (e se a ordem das colunas mudar?)
+
+# Com row_factory: acesso pelo nome da coluna
+con.row_factory = sqlite3.Row
+linha = con.execute("SELECT id, name FROM contacts").fetchone()
+print(linha["name"])     # 'Ana'
+print(dict(linha))       # {'id': 1, 'name': 'Ana'}</code></pre></div></div>
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>templates/contacts.html (linha 32)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1</pre><pre class="code"><code class="language-django">&lt;td class="fw-semibold"&gt;{{ contact.name }}&lt;/td&gt;</code></pre></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">4</span><p><code>fetchone()</code> devolve a primeira linha (ou <code>None</code> se não houver). <code>fetchall()</code> devolve uma lista com todas.</p></div>
+      <div class="pt"><span class="n">5</span><p>Acesso por posição é frágil: trocar a ordem no <code>SELECT</code> quebra o código.</p></div>
+      <div class="pt"><span class="n">8–10</span><p>Com <code>sqlite3.Row</code>, a linha funciona como um dicionário: <code>linha["name"]</code>. O <code>app.py</code> usa assim, por exemplo, <code>user["password_hash"]</code>.</p></div>
+      <div class="pt"><span class="n">T</span><p>No Jinja, <code>contact.name</code> tenta primeiro um atributo e depois uma chave: por isso funciona com <code>Row</code> e com dicionários.</p></div>
+      <div class="callout tip sm">Resumo das três formas de ler resultados: <code>fetchone()</code> uma linha, <code>fetchall()</code> lista de linhas, e <code>…fetchone()["total"]</code> um valor único (usado no dashboard).</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="3">
+  <header><h2>O escudo parametrizado contra SQL Injection</h2><p class="sub">O dado digitado pelo usuário é imprevisível. Ele nunca pode virar parte do comando SQL.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>perigo_vs_correto.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13</pre><pre class="code"><code class="language-python">email = request.form["email"]
+# Um atacante digita no campo e-mail:   ' OR '1'='1
+
+# ❌ NUNCA: montar o SQL concatenando texto
+sql = f"SELECT * FROM users WHERE email = '{email}'"
+# O banco recebe:
+#   SELECT * FROM users WHERE email = '' OR '1'='1'
+# '1'='1' é sempre verdadeiro → devolve TODOS os usuários
+
+# ✅ SEMPRE: marcadores ? e valores separados (como no projeto)
+db.execute("SELECT * FROM users WHERE email = ?", (email,))
+# O texto ' OR '1'='1 é tratado como um e-mail estranho,
+# não como comando. Resultado: nenhuma linha.</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">5</span><p>A f-string cola o texto do usuário dentro do comando. As aspas digitadas fecham a string SQL e o resto vira lógica.</p></div>
+      <div class="pt"><span class="n">11</span><p>Com <code>?</code>, o comando e os valores viajam <b>separados</b> até o SQLite. O valor nunca é interpretado como SQL, não importa o que contenha.</p></div>
+      <div class="pt"><span class="n">,</span><p><code>(email,)</code> com vírgula é uma tupla de um elemento. Sem a vírgula, <code>(email)</code> é só uma string entre parênteses e o <code>execute</code> falha.</p></div>
+      <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py (linhas 175–178)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">175
+176
+177
+178</pre><pre class="code"><code class="language-python">get_db().execute(
+    "INSERT INTO contacts (user_id, name, email, phone, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    (session["user_id"], name, email, phone, notes, datetime.now().isoformat(timespec="seconds")),
+)</code></pre></div></div>
+      <p class="note">Seis <code>?</code>, seis valores, na mesma ordem. Todas as consultas do projeto seguem esse padrão.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 2 · Dados com SQLite" data-level="3">
+  <header><h2>Pausa para conferir: dados</h2><p class="sub">Responda mentalmente e clique em cada cartão para revelar a resposta.</p></header>
+  <div class="body quiz">
+    <button type="button" class="qcard"><span class="q">O que acontece se esquecermos o <code>commit()</code> após um <code>INSERT</code>?</span><span class="a">A alteração fica pendente na transação e é descartada quando a conexão fecha. O contato “some” sem nenhum erro aparente.</span></button>
+    <button type="button" class="qcard"><span class="q">Por que <code>get_db()</code> guarda a conexão em <code>g</code> e não em uma variável global?</span><span class="a"><code>g</code> é individual para cada requisição. Uma global seria compartilhada entre requisições simultâneas, e a conexão SQLite não deve ser usada por várias ao mesmo tempo.</span></button>
+    <button type="button" class="qcard"><span class="q">Qual coluna liga um contato ao seu dono, e como o banco sabe disso?</span><span class="a"><code>contacts.user_id</code>, declarada com <code>FOREIGN KEY (user_id) REFERENCES users (id)</code>.</span></button>
+    <button type="button" class="qcard"><span class="q">Por que <code>f"...WHERE email = '{email}'"</code> é perigoso?</span><span class="a">Porque o texto digitado vira parte do comando SQL (SQL Injection). A forma segura é <code>execute("... = ?", (email,))</code>.</span></button>
+  </div>
+</section>
+
+<!-- ================= PARTE 3 ================= -->
+<section class="slide divider" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <div class="div-num">3</div>
+  <div><h2>Autenticação e sessões</h2><p class="sub">Como o sistema sabe quem você é, página após página.</p>
+  <ul class="div-list"><li>Hash de senhas com Werkzeug</li><li>Cadastro e login, linha por linha</li><li>O crachá digital: sessões no Flask</li><li>Decorators e o guardião <code>@login_required</code></li></ul></div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <header><h2>Senhas nunca são guardadas: hash</h2><p class="sub">Um hash é uma transformação de mão única: fácil de calcular, inviável de reverter.</p></header>
+  <div class="body col">
+    <div class="hashflow">
+      <div class="hf-box">Senha123<small>o que o usuário digita</small></div>
+      <div class="hf-arr">→</div>
+      <div class="hf-fn"><code>generate_password_hash()</code><small>sal aleatório + algoritmo lento</small></div>
+      <div class="hf-arr">→</div>
+      <div class="hf-box hash">scrypt:32768:8:1$8P0YTbw5…$3a41f96a…<small>o que vai para <code>password_hash</code></small></div>
+    </div>
+    <div class="grid2 mt">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>experimento no terminal</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre><pre class="code"><code class="language-python">&gt;&gt;&gt; from werkzeug.security import generate_password_hash, check_password_hash
+&gt;&gt;&gt; h = generate_password_hash("Senha123")
+&gt;&gt;&gt; h[:40]
+'scrypt:32768:8:1$8P0YTbw5NWoZtlKM$3a41f9'
+&gt;&gt;&gt; generate_password_hash("Senha123") == h
+False        # sal diferente a cada chamada
+&gt;&gt;&gt; check_password_hash(h, "Senha123")
+True
+&gt;&gt;&gt; check_password_hash(h, "senha123")
+False</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">4</span><p>O formato registra o <b>algoritmo</b> e parâmetros (<code>scrypt</code>, padrão do Werkzeug 3.x), o <b>sal</b> e o <b>hash</b>, separados por <code>$</code>.</p></div>
+      <div class="pt"><span class="n">5–6</span><p>O <b>sal</b> aleatório faz a mesma senha gerar hashes diferentes: dois usuários com “123456” ficam irreconhecíveis.</p></div>
+      <div class="pt"><span class="n">7–10</span><p>Para conferir, <code>check_password_hash</code> reaplica o algoritmo com o sal guardado e compara.</p></div>
+      <div class="callout tip sm">Se o arquivo <code>agenda.db</code> vazar, as senhas reais não ficam expostas.</div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <header><h2>A porta de entrada: <code>register()</code></h2><p class="sub">Validar, gerar o hash e inserir. Se o e-mail já existir, o próprio banco avisa.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124</pre><pre class="code"><code class="language-python">@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not name or not email or not password:
+            flash("Preencha todos os campos obrigatórios.", "danger")
+        elif len(password) &lt; 6:
+            flash("A senha deve ter pelo menos 6 caracteres.", "danger")
+        elif password != confirm_password:
+            flash("A confirmação de senha não confere.", "danger")
+        else:
+            try:
+                get_db().execute(
+                    "INSERT INTO users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+                    (name, email, generate_password_hash(password), datetime.now().isoformat(timespec="seconds")),
+                )
+                get_db().commit()
+                flash("Usuário cadastrado com sucesso. Agora faça login.", "success")
+                return redirect(url_for("login"))
+            except sqlite3.IntegrityError:
+                flash("Este e-mail já está cadastrado.", "danger")
+
+    return render_template("register.html")</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">101–104</span><p><code>.get(…, "")</code> evita erro se o campo faltar. E-mail em minúsculas: “Ana@X.com” e “ana@x.com” são o mesmo.</p></div>
+      <div class="pt"><span class="n">106–111</span><p>Validação no servidor, em cadeia: a primeira regra violada gera a mensagem.</p></div>
+      <div class="pt"><span class="n">116</span><p>O hash é gerado no momento do <code>INSERT</code>; a senha em texto nunca toca o banco.</p></div>
+      <div class="pt"><span class="n">121</span><p>A restrição <code>UNIQUE</code> faz o SQLite lançar <code>IntegrityError</code>. O código não precisa consultar antes se o e-mail existe.</p></div>
+      <div class="pt"><span class="n">124</span><p>Em GET ou com erro, a página do formulário é exibida de novo, agora com a mensagem flash.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <header><h2>O crachá digital: <code>login()</code></h2><p class="sub">Buscar pelo e-mail, conferir o hash e emitir o crachá na sessão.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146</pre><pre class="code"><code class="language-python">@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = get_db().execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
+
+        if user is None or not check_password_hash(user["password_hash"], password):
+            flash("E-mail ou senha inválidos.", "danger")
+        else:
+            session.clear()
+            session["user_id"] = user["id"]
+            session["user_name"] = user["name"]
+            flash(f"Bem-vindo(a), {user['name']}!", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("login.html")</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">133–135</span><p><b>Passo 1:</b> o <code>SELECT</code> procura o e-mail. <code>fetchone()</code> devolve a linha ou <code>None</code>.</p></div>
+      <div class="pt"><span class="n">137</span><p><b>Passo 2:</b> o Werkzeug confere a senha com o hash. Se a primeira condição for verdadeira, o <code>or</code> nem avalia a segunda.</p></div>
+      <div class="pt"><span class="n">138</span><p>Mensagem genérica de propósito: não revelar se o e-mail existe dificulta ataques.</p></div>
+      <div class="pt"><span class="n">140</span><p><code>session.clear()</code> descarta qualquer sessão anterior antes de criar a nova.</p></div>
+      <div class="pt"><span class="n">141</span><p><b>Passo 3:</b> o crachá. A partir daqui, toda requisição desse navegador carrega <code>user_id</code>.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="4">
+  <header><h2>Por dentro da sessão: um cookie assinado</h2><p class="sub">HTTP não tem memória. A sessão é como o Flask “lembra” de você entre requisições.</p></header>
+  <div class="body col">
+    <div class="seq">
+      <div class="seq-col"><b>Navegador</b></div><div></div><div class="seq-col"><b>Servidor Flask</b></div>
+      <div class="seq-msg r"><span>POST /login (e-mail e senha)</span></div>
+      <div class="seq-msg l"><span>302 → /dashboard &nbsp;+&nbsp; <code>Set-Cookie: session=eyJ1c2VyX2lkIjoxfQ.Zx9…</code></span></div>
+      <div class="seq-msg r"><span>GET /contacts &nbsp;+&nbsp; <code>Cookie: session=eyJ1c2VyX2lkIjoxfQ.Zx9…</code></span></div>
+      <div class="seq-msg l"><span>200 (lista de contatos do user_id 1)</span></div>
+    </div>
+    <div class="grid2 mt">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>decodificando a primeira parte do cookie</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3</pre><pre class="code"><code class="language-python">&gt;&gt;&gt; import base64
+&gt;&gt;&gt; base64.urlsafe_b64decode("eyJ1c2VyX2lkIjoxfQ==")
+b'{"user_id":1}'</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">1</span><p>O conteúdo da sessão vai no próprio cookie, apenas codificado. Qualquer um pode <b>ler</b>: nunca guarde senhas ali.</p></div>
+      <div class="pt"><span class="n">2</span><p>A parte final é uma <b>assinatura</b> feita com a <code>SECRET_KEY</code>. Se alguém trocar <code>1</code> por <code>2</code>, a assinatura não bate e o Flask descarta a sessão.</p></div>
+      <div class="callout warn sm">Por isso a <code>SECRET_KEY</code> precisa ser secreta e forte em produção: quem a conhece pode forjar o crachá de qualquer usuário.</div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <header><h2>Antes de cada requisição: <code>g.user</code></h2><p class="sub">Um gancho que roda antes de qualquer rota e deixa o usuário logado à mão.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95</pre><pre class="code"><code class="language-python">@app.before_request
+def load_logged_in_user():
+    init_db()
+    user_id = session.get("user_id")
+    g.user = None
+    if user_id is not None:
+        g.user = get_db().execute(
+            "SELECT id, name, email FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+
+
+@app.route("/")
+def index():
+    if session.get("user_id"):
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))</code></pre></div></div>
+    <div class="stack">
+      <div class="explain">
+        <div class="pt"><span class="n">80</span><p><code>@app.before_request</code> registra uma função que roda <b>antes de toda</b> requisição.</p></div>
+        <div class="pt"><span class="n">82</span><p>Garante que as tabelas existem (falaremos disso na revisão de código).</p></div>
+        <div class="pt"><span class="n">83–88</span><p>Lê o crachá; se houver, busca nome e e-mail e guarda em <code>g.user</code>. Senão, <code>g.user</code> fica <code>None</code>.</p></div>
+        <div class="pt"><span class="n">91–95</span><p>A raiz só decide para onde mandar o visitante.</p></div>
+      </div>
+      <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>templates/base.html (linhas 18–31, resumido)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre><pre class="code"><code class="language-django">{% if g.user %}
+  &lt;a href="{{ url_for('dashboard') }}"&gt;Dashboard&lt;/a&gt;
+  &lt;a href="{{ url_for('new_contact') }}"&gt;Cadastrar contato&lt;/a&gt;
+  &lt;a href="{{ url_for('list_contacts') }}"&gt;Listar contatos&lt;/a&gt;
+  &lt;span&gt;{{ g.user.name }}&lt;/span&gt;
+  &lt;a href="{{ url_for('logout') }}"&gt;Logout&lt;/a&gt;
+{% else %}
+  &lt;a href="{{ url_for('login') }}"&gt;Login&lt;/a&gt;
+  &lt;a href="{{ url_for('register') }}"&gt;Novo usuário&lt;/a&gt;
+{% endif %}</code></pre></div></div>
+      <p class="note"><code>g</code> está disponível nos templates: o menu muda conforme há ou não alguém logado.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="4">
+  <header><h2>Entendendo decorators do zero</h2><p class="sub">Um decorator é uma função que recebe outra função e devolve uma versão “embrulhada” dela.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>decorator_exemplo.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre><pre class="code"><code class="language-python">from functools import wraps
+
+def anunciar(funcao):
+    @wraps(funcao)
+    def envoltorio(*args, **kwargs):
+        print(f"Antes de {funcao.__name__}")
+        resultado = funcao(*args, **kwargs)
+        print("Depois")
+        return resultado
+    return envoltorio
+
+@anunciar
+def somar(a, b):
+    return a + b
+
+print(somar(2, 3))
+# Antes de somar
+# Depois
+# 5</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">3</span><p><code>anunciar</code> recebe a função original como argumento.</p></div>
+      <div class="pt"><span class="n">5</span><p>Define uma função nova, o <b>envoltório</b>, que aceita quaisquer argumentos.</p></div>
+      <div class="pt"><span class="n">6–9</span><p>Faz algo antes, chama a original, faz algo depois e devolve o resultado.</p></div>
+      <div class="pt"><span class="n">12</span><p><code>@anunciar</code> sobre <code>somar</code> é só um atalho para <code>somar = anunciar(somar)</code>.</p></div>
+      <div class="pt"><span class="n">4</span><p><code>@wraps</code> copia o nome e a documentação da original para o envoltório. Sem ele, <code>somar.__name__</code> seria <code>"envoltorio"</code>.</p></div>
+      <div class="callout info sm">Esse detalhe do <code>@wraps</code> é essencial no Flask: ele usa o nome da função como identificador da rota. Sem <code>@wraps</code>, todas as rotas protegidas teriam o mesmo nome e o Flask recusaria iniciar.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="4">
+  <header><h2>O guardião das rotas: <code>@login_required</code></h2><p class="sub">O mesmo padrão do slide anterior, agora verificando o crachá antes de liberar a página.</p></header>
+  <div class="body grid2">
+    <div class="stack">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">70
+71
+72
+73
+74
+75
+76
+77</pre><pre class="code"><code class="language-python">def login_required(view):
+    @wraps(view)
+    def wrapped_view(**kwargs):
+        if session.get("user_id") is None:
+            flash("Faça login para acessar esta página.", "warning")
+            return redirect(url_for("login"))
+        return view(**kwargs)
+    return wrapped_view</code></pre></div></div>
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">149
+150
+151
+152</pre><pre class="code"><code class="language-python">@app.route("/dashboard")
+@login_required
+def dashboard():
+    ...</code></pre></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">73</span><p><code>session.get</code> devolve <code>None</code> se não houver crachá (em vez de lançar erro como <code>session["user_id"]</code>).</p></div>
+      <div class="pt"><span class="n">74–75</span><p>Sem crachá: avisa e redireciona ao login. A função da rota <b>nunca chega a executar</b>.</p></div>
+      <div class="pt"><span class="n">76</span><p>Com crachá: chama a rota original. <code>**kwargs</code> repassa parâmetros de URL, como um futuro <code>contact_id</code>.</p></div>
+      <div class="pt"><span class="n">149–150</span><p>A <b>ordem importa</b>: <code>@app.route</code> fica por cima, para registrar a versão já protegida.</p></div>
+      <div class="callout tip sm">Uma regra centralizada aplicada com uma linha em quatro rotas. Se a regra mudar, muda em um só lugar.</div>
+      <div class="flash-demo"><div class="alerta-pv warn">Faça login para acessar esta página.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 3 · Autenticação e sessões" data-level="3">
+  <header><h2>Saindo do sistema: <code>logout()</code></h2><p class="sub">Encerrar a sessão é jogar o crachá fora.</p></header>
+  <div class="body grid2">
+    <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">208
+209
+210
+211
+212
+213</pre><pre class="code"><code class="language-python">@app.route("/logout")
+@login_required
+def logout():
+    session.clear()
+    flash("Você saiu do sistema.", "info")
+    return redirect(url_for("login"))</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">211</span><p><code>session.clear()</code> remove <code>user_id</code> e <code>user_name</code>. Na próxima requisição, <code>g.user</code> será <code>None</code> e o menu volta ao modo visitante.</p></div>
+      <div class="pt"><span class="n">212</span><p>A mensagem flash sobrevive ao <code>clear()</code> porque é adicionada <b>depois</b> dele.</p></div>
+      <div class="pt"><span class="n">213</span><p>Redireciona para o login: mais uma vez o padrão Post/Redirect/Get, aqui com GET.</p></div>
+      <p class="mini-title">A jornada de autenticação completa</p>
+      <div class="mini-flow"><span>Cadastro<small>hash + INSERT</small></span><b>→</b><span>Login<small>SELECT + check</small></span><b>→</b><span>Sessão<small>user_id no cookie</small></span><b>→</b><span>Rotas<small>@login_required</small></span><b>→</b><span>Logout<small>session.clear()</small></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PARTE 4 ================= -->
+<section class="slide divider" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <div class="div-num">4</div>
+  <div><h2>As funcionalidades da agenda</h2><p class="sub">Com dados e autenticação prontos, as telas ficam simples de entender.</p>
+  <ul class="div-list"><li>Dashboard: contagem e últimos contatos</li><li>Cadastro de contato com validação dupla</li><li>Busca dinâmica com <code>LIKE</code></li><li>Herança de templates, mensagens e o ciclo MVC</li></ul></div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>O dashboard: duas consultas, uma tela</h2><p class="sub">Contar os contatos do usuário e trazer os cinco mais recentes.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="stack">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160</pre><pre class="code"><code class="language-python">@app.route("/dashboard")
+@login_required
+def dashboard():
+    db = get_db()
+    total_contacts = db.execute(
+        "SELECT COUNT(*) AS total FROM contacts WHERE user_id = ?", (session["user_id"],)
+    ).fetchone()["total"]
+    latest_contacts = db.execute(
+        "SELECT id, name, email, phone, created_at FROM contacts WHERE user_id = ? ORDER BY id DESC LIMIT 5",
+        (session["user_id"],),
+    ).fetchall()
+    return render_template("dashboard.html", total_contacts=total_contacts, latest_contacts=latest_contacts)</code></pre></div></div>
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>templates/dashboard.html (trecho)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9</pre><pre class="code"><code class="language-django">{% if latest_contacts %}
+  ...
+  {% for contact in latest_contacts %}
+  &lt;tr&gt;&lt;td&gt;{{ contact.name }}&lt;/td&gt;&lt;td&gt;{{ contact.email or '-' }}&lt;/td&gt;&lt;td&gt;{{ contact.phone or '-' }}&lt;/td&gt;&lt;/tr&gt;
+  {% endfor %}
+  ...
+{% else %}
+&lt;p class="text-muted"&gt;Nenhum contato cadastrado ainda.&lt;/p&gt;
+{% endif %}</code></pre></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">153–155</span><p><code>COUNT(*)</code> sempre devolve uma linha. <code>fetchone()["total"]</code> extrai direto o número, graças ao <code>AS total</code>.</p></div>
+      <div class="pt"><span class="n">157</span><p><code>ORDER BY id DESC LIMIT 5</code>: ids maiores são os mais novos; pega os cinco primeiros.</p></div>
+      <div class="pt"><span class="n">154, 157</span><p>A regra de ouro outra vez: <code>WHERE user_id = ?</code> nas duas consultas.</p></div>
+      <div class="pt"><span class="n">T4</span><p><code>{{ contact.email or '-' }}</code>: se o e-mail estiver vazio, mostra um traço. O <code>or</code> funciona como no Python.</p></div>
+      <div class="dash-pv"><div class="dpv-kpi"><small>Total de contatos</small><b>12</b></div><div class="dpv-tb"><div><b>Nome</b><b>E-mail</b><b>Telefone</b></div><div><span>Carla</span><span>-</span><span>(86) 98888-1111</span></div><div><span>Bruno</span><span>bruno@email.com</span><span>-</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>Cadastrando um contato: <code>new_contact()</code></h2><p class="sub">O mesmo esqueleto do cadastro de usuário, agora vinculando o contato ao dono.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183</pre><pre class="code"><code class="language-python">@app.route("/contacts/new", methods=["GET", "POST"])
+@login_required
+def new_contact():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
+        notes = request.form.get("notes", "").strip()
+
+        if not name:
+            flash("O nome do contato é obrigatório.", "danger")
+        else:
+            get_db().execute(
+                "INSERT INTO contacts (user_id, name, email, phone, notes, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (session["user_id"], name, email, phone, notes, datetime.now().isoformat(timespec="seconds")),
+            )
+            get_db().commit()
+            flash("Contato cadastrado com sucesso.", "success")
+            return redirect(url_for("list_contacts"))
+
+    return render_template("contact_form.html")</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">164</span><p>Protegida: só usuários logados chegam aqui, então <code>session["user_id"]</code> com certeza existe.</p></div>
+      <div class="pt"><span class="n">167–170</span><p>Lê os quatro campos pelo <code>name</code> de cada input do <code>contact_form.html</code>.</p></div>
+      <div class="pt"><span class="n">172</span><p>Única regra obrigatória: o nome. É a mesma exigência do <code>NOT NULL</code> no banco.</p></div>
+      <div class="pt"><span class="n">177</span><p>O <code>user_id</code> vem da <b>sessão</b>, nunca do formulário. Assim ninguém cadastra contatos na agenda de outra pessoa.</p></div>
+      <div class="pt"><span class="n">179–181</span><p>Confirma, avisa e redireciona para a lista (PRG): apertar F5 não duplica o contato.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>Validação dupla: navegador e servidor</h2><p class="sub">O Bootstrap e o <code>app.js</code> dão retorno imediato; o Python é a garantia final.</p></header>
+  <div class="body grid2 even">
+    <div class="stack">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>templates/contact_form.html</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">10
+11
+12
+13
+14
+15</pre><pre class="code"><code class="language-django">&lt;form method="post" class="needs-validation" novalidate&gt;
+  &lt;div class="mb-3"&gt;
+    &lt;label class="form-label" for="name"&gt;Nome *&lt;/label&gt;
+    &lt;input class="form-control" type="text" name="name" id="name" required&gt;
+    &lt;div class="invalid-feedback"&gt;O nome é obrigatório.&lt;/div&gt;
+  &lt;/div&gt;</code></pre></div></div>
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>static/js/app.js</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21</pre><pre class="code"><code class="language-javascript">(() =&gt; {
+  'use strict';
+
+  const forms = document.querySelectorAll('.needs-validation');
+  Array.from(forms).forEach((form) =&gt; {
+    form.addEventListener('submit', (event) =&gt; {
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    }, false);
+  });
+
+  const phoneInput = document.querySelector('#phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', () =&gt; {
+      phoneInput.value = phoneInput.value.replace(/[^0-9()+\-\s]/g, '');
+    });
+  }
+})();</code></pre></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">H10</span><p><code>novalidate</code> desliga os balões nativos do navegador para que o Bootstrap mostre os seus próprios. <code>action</code> omitido = envia para a mesma URL.</p></div>
+      <div class="pt"><span class="n">H13–14</span><p><code>required</code> marca o campo; <code>invalid-feedback</code> é o texto que aparece quando ele está inválido.</p></div>
+      <div class="pt"><span class="n">J1</span><p>Uma função que se executa na hora <code>(() =&gt; {…})()</code>: as variáveis não vazam para o resto da página.</p></div>
+      <div class="pt"><span class="n">J7–9</span><p><code>checkValidity()</code> verifica as regras do HTML; se falhar, cancela o envio.</p></div>
+      <div class="pt"><span class="n">J11</span><p><code>was-validated</code> faz o Bootstrap pintar os campos de verde ou vermelho.</p></div>
+      <div class="pt"><span class="n">J18</span><p>No campo <code>#phone</code> (linha 24 do template), a expressão regular apaga tudo que não for dígito, parênteses, <code>+</code>, hífen ou espaço, enquanto o usuário digita.</p></div>
+      <div class="demo"><p class="mini-title">Teste a máscara: digite letras e números</p><input id="phoneDemo" type="tel" placeholder="(99) 99999-9999" aria-label="Telefone de teste"></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="4">
+  <header><h2>Busca dinâmica: o funil do <code>LIKE</code></h2><p class="sub">Uma rota, duas consultas: com e sem termo de busca.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205</pre><pre class="code"><code class="language-python">@app.route("/contacts")
+@login_required
+def list_contacts():
+    search = request.args.get("q", "").strip()
+    if search:
+        contacts = get_db().execute(
+            """
+            SELECT id, name, email, phone, notes, created_at
+            FROM contacts
+            WHERE user_id = ? AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)
+            ORDER BY name ASC
+            """,
+            (session["user_id"], f"%{search}%", f"%{search}%", f"%{search}%"),
+        ).fetchall()
+    else:
+        contacts = get_db().execute(
+            "SELECT id, name, email, phone, notes, created_at FROM contacts WHERE user_id = ? ORDER BY name ASC",
+            (session["user_id"],),
+        ).fetchall()
+    return render_template("contacts.html", contacts=contacts, search=search)</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">189</span><p>O termo vem da URL: <code>/contacts?q=ana</code> → <code>request.args</code>. Busca usa GET para que o link possa ser salvo ou compartilhado.</p></div>
+      <div class="pt"><span class="n">195</span><p>Os <b>parênteses</b> são cruciais. Sem eles, <code>A AND B OR C</code> vira <code>(A AND B) OR C</code> e a busca mostraria contatos de outros usuários!</p></div>
+      <div class="pt"><span class="n">198</span><p>Os <code>%</code> são colocados no <b>valor</b>, não no SQL: <code>"%ana%"</code> casa com “Ana”, “Mariana”, “ana@x.com”. A consulta continua parametrizada.</p></div>
+      <div class="pt"><span class="n">195</span><p>No SQLite, <code>LIKE</code> ignora maiúsculas e minúsculas para letras sem acento (“ANA” = “ana”, mas “É” ≠ “é”).</p></div>
+      <div class="pt"><span class="n">205</span><p><code>search</code> volta ao template para manter o termo visível na caixa de busca.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>A tela da lista: formulário GET e tabela</h2><p class="sub">O template fecha o ciclo da busca e trata a lista vazia.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>templates/contacts.html</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35</pre><pre class="code"><code class="language-django">&lt;form class="row g-2 mb-3" method="get"&gt;
+  &lt;div class="col-md-10"&gt;
+    &lt;input class="form-control" type="search" name="q" value="{{ search }}" placeholder="Buscar por nome, e-mail ou telefone"&gt;
+  &lt;/div&gt;
+  &lt;div class="col-md-2 d-grid"&gt;
+    &lt;button class="btn btn-outline-primary" type="submit"&gt;Buscar&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/form&gt;
+
+{% if contacts %}
+&lt;div class="table-responsive"&gt;
+  &lt;table class="table table-hover align-middle" id="contactsTable"&gt;
+    ...
+      {% for contact in contacts %}
+      &lt;tr&gt;
+        &lt;td class="fw-semibold"&gt;{{ contact.name }}&lt;/td&gt;
+        &lt;td&gt;{{ contact.email or '-' }}&lt;/td&gt;
+        &lt;td&gt;{{ contact.phone or '-' }}&lt;/td&gt;
+        &lt;td&gt;{{ contact.notes or '-' }}&lt;/td&gt;
+        &lt;td&gt;{{ contact.created_at }}&lt;/td&gt;
+      &lt;/tr&gt;
+      {% endfor %}</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">14</span><p><code>method="get"</code>: ao enviar, o navegador monta a URL <code>/contacts?q=texto</code> com o <code>name="q"</code> do input.</p></div>
+      <div class="pt"><span class="n">16</span><p><code>value="{{ search }}"</code> repõe o termo pesquisado. O Jinja escapa o texto: digitar <code>"&gt;&lt;script&gt;</code> não injeta HTML.</p></div>
+      <div class="pt"><span class="n">23</span><p>Se a lista estiver vazia, o <code>else</code> (fora da imagem) mostra “Nenhum contato encontrado” com um botão de cadastro: o vazio vira convite para agir.</p></div>
+      <div class="pt"><span class="n">15–20</span><p>Classes Bootstrap: <code>row</code> e <code>col-md-10</code>/<code>col-md-2</code> dividem a linha em 12 colunas; em celulares, os itens empilham.</p></div>
+      <div class="search-pv"><div class="spv-bar"><span>mari</span><b>Buscar</b></div><div class="spv-row"><span>Mariana</span><span>mari@email.com</span></div><div class="spv-row"><span>Rosimari</span><span>-</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>O molde comum: <code>base.html</code> e as mensagens</h2><p class="sub">Menu, alertas e rodapé escritos uma vez; cada página injeta só o seu conteúdo.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>templates/base.html</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49</pre><pre class="code"><code class="language-django">&lt;main class="container py-4"&gt;
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        &lt;div class="alert alert-{{ category }} alert-dismissible fade show" role="alert"&gt;
+          {{ message }}
+          &lt;button type="button" class="btn-close" data-bs-dismiss="alert"&gt;&lt;/button&gt;
+        &lt;/div&gt;
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+&lt;/main&gt;</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">37</span><p><code>{% with %}</code> cria uma variável local: as mensagens são lidas <b>uma vez</b> e então descartadas da sessão.</p></div>
+      <div class="pt"><span class="n">40</span><p>A <b>categoria</b> do <code>flash()</code> vira classe do Bootstrap: <code>"danger"</code> → <code>alert-danger</code> (vermelho). Um encaixe planejado.</p></div>
+      <div class="pt"><span class="n">42</span><p><code>data-bs-dismiss</code>: o JavaScript do Bootstrap fecha o alerta, sem uma linha de JS nossa.</p></div>
+      <div class="pt"><span class="n">48</span><p>O buraco que cada página preenche com <code>{% extends "base.html" %}</code> e <code>{% block content %}</code>.</p></div>
+      <div class="flash-demo"><div class="alerta-pv sucesso">success · Contato cadastrado com sucesso.</div><div class="alerta-pv erro">danger · O nome do contato é obrigatório.</div><div class="alerta-pv warn">warning · Faça login para acessar esta página.</div><div class="alerta-pv info">info · Você saiu do sistema.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>O ciclo de vida da informação: MVC na prática</h2><p class="sub">Acompanhe uma busca por “ana” passando por todas as camadas.</p></header>
+  <div class="body grid2 even">
+    <div class="mvc">
+      <div class="mvc-b m1"><span>1</span><div><b>Navegador · o gatilho</b><p>Usuário digita “ana” e clica em Buscar → <code>GET /contacts?q=ana</code></p></div></div>
+      <div class="mvc-b m2"><span>2</span><div><b>Rota Flask · Controlador</b><p><code>@login_required</code> confere o crachá; <code>list_contacts()</code> lê <code>q</code></p></div></div>
+      <div class="mvc-b m3"><span>3</span><div><b>SQLite · Modelo</b><p><code>SELECT … WHERE user_id = ? AND (name LIKE ? …)</code> devolve as linhas</p></div></div>
+      <div class="mvc-b m4"><span>4</span><div><b>Jinja2 · Visão</b><p><code>contacts.html</code> monta a tabela e o HTML final volta ao navegador</p></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">M</span><p><b>Model</b> (modelo): os dados e suas regras. Aqui, as tabelas SQLite e o SQL.</p></div>
+      <div class="pt"><span class="n">V</span><p><b>View</b> (visão): a apresentação. Os templates Jinja2 com Bootstrap.</p></div>
+      <div class="pt"><span class="n">C</span><p><b>Controller</b> (controlador): recebe a requisição e coordena. As funções de rota do <code>app.py</code>.</p></div>
+      <div class="callout info sm">É um MVC <b>simplificado</b>: modelo e controlador convivem no mesmo arquivo. Separá-los em módulos é um dos próximos passos (Parte 5).</div>
+      <div class="callout tip sm">Ao depurar, pergunte “em qual etapa do ciclo está o problema?”: dado errado → SQL; tela errada → template; redirecionamento estranho → rota.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 4 · Funcionalidades" data-level="3">
+  <header><h2>Síntese: a jornada completa do usuário</h2><p class="sub">O projeto é pequeno, mas já simula o ciclo real de um sistema web.</p></header>
+  <div class="body col">
+    <div class="journey">
+      <div class="jr j1"><b>Cadastro</b><code>POST /register</code><p>Valida, gera o hash, <code>INSERT</code> em users</p></div>
+      <div class="jr j2"><b>Login</b><code>POST /login</code><p><code>SELECT</code>, confere o hash, emite <code>session["user_id"]</code></p></div>
+      <div class="jr j3"><b>Dashboard</b><code>GET /dashboard</code><p><code>@login_required</code>, <code>COUNT</code> e últimos 5</p></div>
+      <div class="jr j4"><b>Novo contato</b><code>POST /contacts/new</code><p>Valida, <code>INSERT</code> parametrizado com o dono da sessão</p></div>
+      <div class="jr j5"><b>Busca</b><code>GET /contacts?q=</code><p>Filtra com <code>LIKE</code>, renderiza com Jinja2</p></div>
+      <div class="jr j6"><b>Logout</b><code>GET /logout</code><p><code>session.clear()</code> tranca a porta</p></div>
+    </div>
+    <p class="key">Autenticar, navegar, cadastrar, consultar e encerrar sessão: os mesmos passos de sistemas muito maiores.</p>
+  </div>
+</section>
+
+<!-- ================= PARTE 5 ================= -->
+<section class="slide divider" data-part="Parte 5 · Indo além" data-level="4">
+  <div class="div-num">5</div>
+  <div><h2>Indo além</h2><p class="sub">Olhar crítico sobre o código e os próximos degraus.</p>
+  <ul class="div-list"><li>Revisão de código: oportunidades de melhoria</li><li>Exercícios: excluir e editar com segurança</li><li>Arquitetura: Blueprints e SQLAlchemy</li><li>Missões práticas</li></ul></div>
+</section>
+
+<section class="slide" data-part="Parte 5 · Indo além" data-level="4">
+  <header><h2>Revisão de código: fronteiras didáticas</h2><p class="sub">Simplificações aceitáveis para aprender, mas que precisam mudar antes de ir para produção.</p></header>
+  <div class="body">
+    <table class="tbl wide">
+      <tr><th>Onde</th><th>O que acontece</th><th>Por que importa</th><th>Melhoria</th></tr>
+      <tr><td><code>app.py:219</code></td><td><code>debug=True</code> com <code>host="0.0.0.0"</code></td><td>O depurador fica acessível a outras máquinas da rede e permite executar código</td><td>Debug só com <code>127.0.0.1</code>; nunca em produção</td></tr>
+      <tr><td><code>app.py:12</code></td><td><code>SECRET_KEY</code> com valor padrão</td><td>Quem conhece a chave forja sessões</td><td>Definir a variável de ambiente <code>SECRET_KEY</code></td></tr>
+      <tr><td>formulários</td><td>Sem token CSRF</td><td>Outro site pode enviar formulários em nome do usuário logado</td><td>Flask-WTF com <code>csrf_token()</code></td></tr>
+      <tr><td><code>app.py:82</code></td><td><code>init_db()</code> a cada requisição</td><td>Funciona, mas repete <code>CREATE TABLE</code> sem necessidade</td><td>Rodar só pelo comando <code>init-db</code> ou na inicialização</td></tr>
+      <tr><td><code>get_db()</code></td><td>Chaves estrangeiras não verificadas</td><td>O SQLite ignora <code>FOREIGN KEY</code> por padrão</td><td><code>g.db.execute("PRAGMA foreign_keys = ON")</code></td></tr>
+      <tr><td><code>/logout</code></td><td>Logout por link GET</td><td>GET não deveria mudar estado</td><td>Botão em um formulário POST</td></tr>
+    </table>
+    <p class="note">Também são limitações intencionais: não há edição nem exclusão de contatos, e as consultas usam SQL puro, sem ORM. Os próximos slides atacam essas lacunas.</p>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 5 · Indo além" data-level="4">
+  <header><h2>Exercício resolvido: excluir um contato</h2><p class="sub">O <code>DELETE</code> precisa respeitar a regra de ouro, ou qualquer usuário apaga contatos alheios.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="stack">
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>app.py (nova rota)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14</pre><pre class="code"><code class="language-python">@app.route("/contacts/&lt;int:contact_id&gt;/delete", methods=["POST"])
+@login_required
+def delete_contact(contact_id):
+    db = get_db()
+    cursor = db.execute(
+        "DELETE FROM contacts WHERE id = ? AND user_id = ?",
+        (contact_id, session["user_id"]),
+    )
+    db.commit()
+    if cursor.rowcount == 0:
+        flash("Contato não encontrado.", "warning")
+    else:
+        flash("Contato excluído.", "success")
+    return redirect(url_for("list_contacts"))</code></pre></div></div>
+    <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>templates/contacts.html (nova coluna)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6</pre><pre class="code"><code class="language-django">&lt;td&gt;
+  &lt;form method="post" action="{{ url_for('delete_contact', contact_id=contact.id) }}"
+        onsubmit="return confirm('Excluir este contato?')"&gt;
+    &lt;button class="btn btn-sm btn-outline-danger"&gt;Excluir&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/td&gt;</code></pre></div></div>
+    </div>
+    <div class="explain">
+      <div class="pt"><span class="n">1</span><p><code>&lt;int:contact_id&gt;</code> captura o id da URL; <code>POST</code> porque altera dados.</p></div>
+      <div class="pt"><span class="n">6</span><p><code>AND user_id = ?</code> é a linha mais importante. Sem ela, bastaria trocar o número na URL para apagar o contato de outra pessoa: a falha conhecida como <b>IDOR</b> (referência direta insegura a objeto).</p></div>
+      <div class="pt"><span class="n">10</span><p><code>rowcount</code> diz quantas linhas foram afetadas. Zero = o contato não existe <b>ou</b> não é seu, e a resposta é a mesma nos dois casos.</p></div>
+      <div class="pt"><span class="n">T3</span><p><code>confirm()</code> pede confirmação; devolver <code>false</code> cancela o envio.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 5 · Indo além" data-level="4">
+  <header><h2>Exercício resolvido: editar um contato</h2><p class="sub"><code>SELECT</code> para preencher o formulário, <code>UPDATE</code> para salvar, ambos filtrados pelo dono.</p></header>
+  <div class="body grid2 wide-code">
+    <div class="codebox xs"><div class="cb-head"><i></i><i></i><i></i><span>app.py (nova rota)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29</pre><pre class="code"><code class="language-python">@app.route("/contacts/&lt;int:contact_id&gt;/edit", methods=["GET", "POST"])
+@login_required
+def edit_contact(contact_id):
+    db = get_db()
+    contact = db.execute(
+        "SELECT * FROM contacts WHERE id = ? AND user_id = ?",
+        (contact_id, session["user_id"]),
+    ).fetchone()
+    if contact is None:
+        abort(404)
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("O nome do contato é obrigatório.", "danger")
+        else:
+            db.execute(
+                """UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ?
+                   WHERE id = ? AND user_id = ?""",
+                (name,
+                 request.form.get("email", "").strip().lower(),
+                 request.form.get("phone", "").strip(),
+                 request.form.get("notes", "").strip(),
+                 contact_id, session["user_id"]),
+            )
+            db.commit()
+            flash("Contato atualizado.", "success")
+            return redirect(url_for("list_contacts"))
+
+    return render_template("contact_form.html", contact=contact)</code></pre></div></div>
+    <div class="explain">
+      <div class="pt"><span class="n">5–10</span><p>Busca o contato <b>já filtrando pelo dono</b>. Se não existir ou for de outro usuário, <code>abort(404)</code> (importe <code>abort</code> do <code>flask</code>).</p></div>
+      <div class="pt"><span class="n">16–18</span><p><code>UPDATE … SET</code> troca os valores; o <code>WHERE</code> repete <code>user_id = ?</code> como defesa extra.</p></div>
+      <div class="pt"><span class="n">29</span><p>Reaproveita o <code>contact_form.html</code>, agora recebendo o contato para preencher os campos:</p></div>
+      <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>contact_form.html (ajuste)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2</pre><pre class="code"><code class="language-django">&lt;input class="form-control" name="name" id="name" required
+       value="{{ contact.name if contact else '' }}"&gt;</code></pre></div></div>
+      <div class="callout tip sm">Com isso, a agenda vira um <b>CRUD completo</b>: Create, Read, Update e Delete.</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 5 · Indo além" data-level="4">
+  <header><h2>O caminho futuro: Blueprints e SQLAlchemy</h2><p class="sub">Duas evoluções de arquitetura quando o <code>app.py</code> começar a crescer demais.</p></header>
+  <div class="body grid2 even">
+    <div class="stack">
+      <h3 class="h3">Blueprints: rotas em módulos</h3>
+      <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>auth.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7</pre><pre class="code"><code class="language-python">from flask import Blueprint
+
+bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+@bp.route("/login", methods=["GET", "POST"])
+def login():
+    ...</code></pre></div></div>
+      <div class="codebox "><div class="cb-head"><i></i><i></i><i></i><span>app.py</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3</pre><pre class="code"><code class="language-python">from auth import bp as auth_bp
+app.register_blueprint(auth_bp)
+# url_for("auth.login")  →  /auth/login</code></pre></div></div>
+      <p class="note">Cada área (autenticação, contatos) ganha seu próprio arquivo. O nome da rota passa a ter prefixo: <code>auth.login</code>.</p>
+    </div>
+    <div class="stack">
+      <h3 class="h3">SQLAlchemy: tabelas como classes</h3>
+      <div class="codebox sm"><div class="cb-head"><i></i><i></i><i></i><span>models.py (Flask-SQLAlchemy)</span></div><div class="cb-body"><pre class="gutter" aria-hidden="true">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12</pre><pre class="code"><code class="language-python">class Contact(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.ForeignKey("user.id"), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(30))
+
+# Em vez de SQL escrito à mão:
+contatos = db.session.scalars(
+    db.select(Contact)
+      .filter_by(user_id=session["user_id"])
+      .order_by(Contact.name)
+).all()</code></pre></div></div>
+      <p class="note">Um <b>ORM</b> gera o SQL (sempre parametrizado), facilita trocar SQLite por PostgreSQL e versionar o esquema com migrações.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-part="Parte 5 · Indo além" data-level="4">
+  <header><h2>Missões práticas</h2><p class="sub">Do mais simples ao mais desafiador. Marque cada missão ao concluir.</p></header>
+  <div class="body">
+    <div class="missions">
+      <button type="button" class="mission" data-id="a1"><span class="chk"></span><span class="lab l1">Nível 1</span><span>Rodar o projeto, criar dois usuários e confirmar que um não vê os contatos do outro.</span></button>
+      <button type="button" class="mission" data-id="a2"><span class="chk"></span><span class="lab l2">Nível 2</span><span>Abrir o <code>agenda.db</code> (DB Browser for SQLite) e localizar o hash da sua senha.</span></button>
+      <button type="button" class="mission" data-id="a3"><span class="chk"></span><span class="lab l3">Nível 2</span><span>Adicionar ao dashboard a contagem de contatos sem telefone (<code>WHERE phone = ''</code>).</span></button>
+      <button type="button" class="mission" data-id="a4"><span class="chk"></span><span class="lab l4">Nível 3</span><span>Implementar a exclusão de contatos com <code>WHERE id = ? AND user_id = ?</code>.</span></button>
+      <button type="button" class="mission" data-id="a5"><span class="chk"></span><span class="lab l5">Nível 3</span><span>Implementar a edição reaproveitando o <code>contact_form.html</code>.</span></button>
+      <button type="button" class="mission" data-id="a6"><span class="chk"></span><span class="lab l6">Nível 4</span><span>Aplicar duas melhorias da revisão: <code>PRAGMA foreign_keys</code> e logout via POST.</span></button>
+      <button type="button" class="mission" data-id="a7"><span class="chk"></span><span class="lab l6">Desafio</span><span>Separar as rotas em Blueprints <code>auth</code> e <code>contacts</code>.</span></button>
+    </div>
+  </div>
+</section>
+
+<section class="slide cover end" data-part="Encerramento" data-level="0">
+  <div class="end-wrap">
+    <h1>Obrigado!</h1>
+    <p class="cover-sub">Dominar este fluxo MVC básico é o alicerce antes de adotar frameworks maiores e abstrações mais complexas no ecossistema Python.</p>
+    <div class="refs">
+      <div><b>Tutorial oficial do Flask (Flaskr)</b><span>flask.palletsprojects.com/tutorial</span></div>
+      <div><b>Módulo sqlite3 do Python</b><span>docs.python.org/3/library/sqlite3.html</span></div>
+      <div><b>Bootstrap 5</b><span>getbootstrap.com/docs/5.3</span></div>
+      <div><b>OWASP Top 10</b><span>owasp.org/Top10</span></div>
+    </div>
+    <p class="cover-author">Prof. Armando Soares Sousa<br><span>Departamento de Computação · UFPI</span></p>
+  </div>
+</section>
+
+<div class="progress" id="bar"></div>
+<nav class="nav" aria-label="Navegação dos slides">
+  <button type="button" id="prev" aria-label="Slide anterior">← Anterior</button>
+  <span class="part" id="part"></span>
+  <span class="count" id="count"></span>
+  <button type="button" id="next" aria-label="Próximo slide">Próximo →</button>
+</nav>
+</div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/django.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/http.min.js"></script>
+<script>
+(function(){
+  const deck=document.querySelector('.deck');
+  const slides=[...document.querySelectorAll('.slide')];
+  const prev=document.getElementById('prev'), next=document.getElementById('next');
+  const count=document.getElementById('count'), part=document.getElementById('part'), bar=document.getElementById('bar');
+  let cur=0;
+  function meter(el,l){el.innerHTML='';for(let i=1;i<=4;i++){const s=document.createElement('i');if(i<=l)s.className='on';el.appendChild(s);}}
+  document.querySelectorAll('.lv[data-l]').forEach(el=>meter(el,+el.dataset.l));
+  slides.forEach(s=>{const l=+s.dataset.level; if(l>0){const t=document.createElement('div');t.className='meta-tag';t.innerHTML='<span>Complexidade</span><span class="lv"></span>';meter(t.querySelector('.lv'),l);t.title='Nível '+l+' de 4';s.appendChild(t);}});
+  function fit(){const w=window.innerWidth,h=window.innerHeight;const s=Math.min(w/1280,h/720)*0.97;deck.style.transform='translate(-50%,-50%) scale('+s+')';}
+  function go(i,fromHash){cur=Math.max(0,Math.min(slides.length-1,i));slides.forEach((s,k)=>s.classList.toggle('active',k===cur));
+    count.textContent=(cur+1)+' / '+slides.length;part.textContent=slides[cur].dataset.part||'';
+    bar.style.width=((cur+1)/slides.length*100)+'%';prev.disabled=cur===0;next.disabled=cur===slides.length-1;
+    if(!fromHash){const h='#slide-'+(cur+1);if(location.hash!==h)location.replace(h);}}
+  function fromHash(){const m=/^#slide-(\d+)$/.exec(location.hash);return m?(+m[1]-1):0;}
+  prev.onclick=()=>go(cur-1); next.onclick=()=>go(cur+1);
+  document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();go(cur+1);}
+    else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();go(cur-1);}
+    else if(e.key==='Home'){go(0);}else if(e.key==='End'){go(slides.length-1);}});
+  let tx=null;deck.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+  deck.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>50)go(cur+(dx<0?1:-1));tx=null;});
+  window.addEventListener('hashchange',()=>{const i=fromHash();if(i!==cur)go(i,true);});
+  window.addEventListener('resize',fit);fit();go(fromHash(),true);
+  // demos
+  let n=0;const db=document.getElementById('demoBtn'),dm=document.getElementById('demoMsg');
+  if(db)db.addEventListener('click',e=>{e.stopPropagation();n++;dm.textContent='Você clicou '+n+' vez(es)';});
+  document.querySelectorAll('.qcard').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('open')));
+  let done={};try{done=JSON.parse(localStorage.getItem('agenda-missoes')||'{}')||{};}catch(e){done={};}
+  document.querySelectorAll('.mission').forEach(m=>{if(done[m.dataset.id])m.classList.add('done');
+    m.addEventListener('click',()=>{m.classList.toggle('done');done[m.dataset.id]=m.classList.contains('done');try{localStorage.setItem('agenda-missoes',JSON.stringify(done));}catch(e){}});});
+  const ph=document.getElementById('phoneDemo');if(ph){ph.addEventListener('input',()=>{ph.value=ph.value.replace(/[^0-9()+\-\s]/g,'');});}
+  if(window.hljs){document.querySelectorAll('pre.code code').forEach(b=>{try{hljs.highlightElement(b);}catch(e){}});}
+})();
+</script>
+</body>
+</html>
